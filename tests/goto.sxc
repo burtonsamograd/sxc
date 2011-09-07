@@ -1,0 +1,22 @@
+(#include <stdio.h>)
+
+(int main ((int argc) ((** char) argv))
+
+     (puts "before loop")
+
+     (: before_loop)
+     
+     (if 1
+	 (goto after_loop)
+     (else (if 0 ; should indent this way, TODO: figure out how to do this in emacs (indent back to if level)
+	       (goto before_loop))))
+     
+     (while 1
+       (puts "infinite loop"))
+
+     (if 0 
+	 (goto before_loop))
+
+     (: after_loop)
+
+     (puts "after loop"))
