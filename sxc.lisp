@@ -40,6 +40,15 @@
 				   '|\|\||)
 				 '|\||)))
 		     nil sxc-read-table)
+(set-macro-character #\' (lambda (stream closec)
+			   (declare (ignore closec))
+			   (let ((c (peek-char nil stream)))
+			     (if (char= c #\ )
+				 (progn
+				   (read-char stream)
+				   '(quote | |))
+				 `(quote ,(read stream)))))
+		     nil sxc-read-table)
 
 #| c language keywords
 
