@@ -302,14 +302,19 @@ while
 		 (mapcar (lambda (vardecl)
 			   (incf curvardecl)
 			   (if (= curvardecl numvardecl)
-			       (format s "~A ~A) {~%" (output-c-helper (first vardecl) t) (second vardecl))
+			       (if body
+				   (format s "~A ~A) {~%" (output-c-helper (first vardecl) t) (second vardecl))
+				   (format s "~A ~A)~%" (output-c-helper (first vardecl) t) (second vardecl)))
 			       (format s "~A ~A, " (output-c-helper (first vardecl) t) (second vardecl))))
 			 args)
 		 (format s ") {"))
-	     (mapcar (lambda (form)
-		       (format s "~A;~%" (output-c-helper form)))
-		     body)
-	     (format s "~%}~%")))
+	     (if body
+		 (progn
+		   (mapcar (lambda (form)
+			     (format s "~A;~%" (output-c-helper form)))
+			   body)
+		   (format s "~%}~%"))
+		 (format s ";~%"))))
        (error (e)
 	 (format s "~A;~%" (output-c-helper form)))))))
 
