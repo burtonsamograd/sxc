@@ -251,8 +251,10 @@ while
 			 (output-c-helper (second form))
 			 (car form)
 			 (output-c-helper (third form))))
-		((+ - * / ^ ~ == < > <= >= != && |\|\|| |\|| |&|) ; infix operator
+		((+ - * / ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
 		 (c-output-infix-operator form))
+		(|[]| ; array reference
+		 (format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form))))
 		(|if| ; if statement
 		 (c-output-if form))
 		(|while| ;while statement
