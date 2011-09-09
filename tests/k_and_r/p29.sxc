@@ -1,0 +1,45 @@
+(#include <stdio.h>)
+(#define MAXLINE 1000) ; maximum input line length
+
+(int _getline ((char ([] line)) (int maxline))) ; need the underscore since GLIBC defines getline
+(void copy ((char ([] to)) (char ([] from))))
+
+(int main ()
+     (var int len)			; current line length
+     (var int max)			; maximum length seen so far
+     (var char ([] line MAXLINE))	; current input line
+     (var char ([] longest MAXLINE))	; longest line saved here
+
+     (= max 0)
+     (while (> (= len (_getline line MAXLINE)) 0)
+       (if (> len max)
+	   (= max len)
+	   (copy longest line)))
+
+       (if (> max 0) ; there was a line
+	   (printf "%s" longest))
+
+       (return 0))
+
+; _getline: read a line into s, return length
+(int _getline ((char ([] s)) (int lim))
+     (var int c i)
+
+     (for (= i 0) (&& (< i (- lim 1)) (!= (= c (getchar)) EOF) (!= c '\n)) (++ i)
+	  (= ([] s i) c))
+     (if (== c '\n)
+	 (= ([] s i) c)
+	 (++ i))
+
+     (= ([] s i) '\0)
+     
+     (return i))
+
+; copy: copy 'from' int o 'to'; assume it is big enough
+(void copy ((char ([] to)) (char ([] from)))
+      (var int i)
+
+      (= i 0)
+
+      (while (!= (= ([] to i) ([] from i)) '\0)
+	(++ i)))
