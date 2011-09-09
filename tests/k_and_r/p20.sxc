@@ -4,7 +4,7 @@
 (#define OUT 0)	; outside a word
 
 ;; count words, lines and characters in input
-(int main ((int argc) ((** char) argv))
+(int main ((int argc) (char (** argv)))
      (var int c nl nw nc state)
 
      (= state OUT)

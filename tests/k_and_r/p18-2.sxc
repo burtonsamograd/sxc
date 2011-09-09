@@ -1,6 +1,6 @@
 (#include <stdio.h>)
 
-(int main ((int argc) ((** char) argv))
+(int main ((int argc) (char (** argv)))
      (var double nc)
 
      (for (= nc 0) (!= (getchar) EOF) (nc ++))

@@ -4,7 +4,7 @@
 (#define UPPER 200)	; upper limit
 (#define STEP 20)	; step size
 
-(int main ((int argc) ((** char) argv))
+(int main ((int argc) (char (** argv)))
      (var int fahr)
 
      (for (= fahr LOWER) (<= fahr UPPER) (= fahr (+ fahr STEP))
