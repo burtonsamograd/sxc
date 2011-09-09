@@ -31,6 +31,10 @@
 			   (declare (ignore stream closec))
 			   '|:|)
 		     nil sxc-read-table)
+(set-macro-character #\, (lambda (stream closec)
+			   (declare (ignore stream closec))
+			   '|,|)
+		     nil sxc-read-table)
 (set-macro-character #\| (lambda (stream closec)
 			   (declare (ignore closec))
 			   (let ((c (peek-char nil stream)))
@@ -222,9 +226,14 @@ while
 	      (format s "(~A) = " (output-c-helper lhs))
 	      (mapcar (lambda (arg)
 			(incf cur-arg)
-			(if (= cur-arg n-args)
-			    (format s "(~A)" (output-c-helper arg))
-			    (format s "(~A) = " (output-c-helper arg))))
+			(if (and (listp arg)
+				 (eq (car arg) '|,|))
+			    (if (= cur-arg n-args) ; special case for comma operator, no parens around rhs
+				(format s "~A" (output-c-helper arg))
+				(format s "~A = " (output-c-helper arg)))
+			    (if (= cur-arg n-args)
+				(format s "(~A)" (output-c-helper arg))
+				(format s "(~A) = " (output-c-helper arg)))))
 		      args)
 	      s)))
 
@@ -249,7 +258,17 @@ while
 	 (format s "}~%")
 	 s)))
 			       
-	 
+(def simple-string c-output-comma ((list form))
+     (with-output-to-string (s)
+       (vars ((fixnum numexpr (length (rest form)))
+	      (fixnum curexpr 0))
+	     (mapcar (lambda (expr)
+		       (incf curexpr)
+		       (if (= curexpr numexpr)
+			   (format s "~A" (output-c-helper expr))
+			   (format s "~A, " (output-c-helper expr))))
+		     (rest form)))
+       s))
 
 (def simple-string output-c-helper (((or list symbol string fixnum float) form))
 ;  (format t "***'~A' ~A~%" form is-type-or-var-decl)
@@ -270,6 +289,8 @@ while
 			    (output-c-helper (third form))))
 		   ((+ - * / % ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
 		    (c-output-infix-operator form))
+		   (|,| ; comma operator
+		    (c-output-comma form))
 		   (|[]| ; array reference
 		    (if (= (length form) 2)
 			(format nil "~A[]" (output-c-helper (second form)))
