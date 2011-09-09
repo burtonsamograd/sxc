@@ -150,7 +150,7 @@ while
 	      (format s "~A ~A " (if (eq (first form) '|var|)
 				     ""
 				     (first form))
-		      (output-c-helper (second form) t))
+		      (output-c-helper (second form)))
 	      (mapcar (lambda (var)
 			(incf curvar)
 			(if (= curvar nvars)
@@ -228,64 +228,54 @@ while
 		      args)
 	      s)))
 
-(def simple-string output-c-helper (((or list symbol string fixnum float) form) &optional (boolean is-type-or-var-decl nil))
+(def simple-string output-c-helper (((or list symbol string fixnum float) form))
 ;  (format t "***'~A' ~A~%" form is-type-or-var-decl)
-  (if is-type-or-var-decl
-      (if (listp form)
-	(case (car form)
-	  (* (format nil "~A*" (output-c-helper (cadr form) t)))
-	  (** (format nil "~A**" (output-c-helper (cadr form) t)))
-	  (*** (format nil "~A***" (output-c-helper (cadr form) t)))
-	  (**** (format nil "~A****" (output-c-helper (cadr form) t))) ; for those 4 star programmers
-	  (otherwise
-	   (output-c-helper (car form) t)))
-	(format nil "~A" form))
-      (if (listp form)
-	  (if (listp (car form)) ; variable decleration
-	      (format nil "~A ~A" (output-c-helper (car form) t) (output-c-helper (second form)))
-	      (case (car form) ; keyword, operator or function (or macro)
-		(=
-		 (c-output-equals form))
-		((=+ =- =* =/ =^ =~)
-		 (format nil "~A ~A ~A"
-			 (output-c-helper (second form))
-			 (car form)
-			 (output-c-helper (third form))))
-		((+ - * / ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
-		 (c-output-infix-operator form))
-		(|[]| ; array reference
-		 (if (= (length form) 2)
-		     (format nil "~A[]" (output-c-helper (second form)))
-		     (format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form)))))
-		(|if| ; if statement
-		 (c-output-if form))
-		(|while| ;while statement
-		 (c-output-while form))
-		(|for| ; for statement
-		 (c-output-for form))
-		(|cast| ; special case of cast funcall operator (cast type var)
-		 (format nil "((~A)~A)" (output-c-helper (second form) t) (output-c-helper (third form))))
-		((|var| |auto| |static| |extern|) ; variable decleration
-		 (c-output-variable-decleration form))
-		(|goto| ; goto statement
-		 (format nil "goto ~A" (second form)))
-		(|:| ; labels are precedded by a colon as a function call
-		 (format nil "~A:" (second form)))
-		('quote ; characters are single quoted, using double backslashes when required
-		 (if (eq '|space| (second form))
-		     (format nil "' '" )
-		     (format nil "'~A'" (second form))))
-		(otherwise ; function call or post-increment/decriment
-		 (if (or (eq (second form) '++)
-			 (eq (second form) '--))
-		     (format nil "(~A)~A" (output-c-helper (first form)) (second form))
-		     (c-output-function-call form)))))
-      (typecase form
-	    (string (format nil "\"~A\"" form))
-	    (fixnum (format nil "~A" form))
-	    (float (format nil "~A" form))
-	    (symbol (format nil "~A" form))))))
-  
+     (if (listp form)
+	 (if (listp (car form)) ; variable decleration
+	     (format nil "~A ~A" (output-c-helper (car form)) (output-c-helper (second form)))
+	     (case (car form) ; keyword, operator or function (or macro)
+	       (=
+		(c-output-equals form))
+	       ((=+ =- =* =/ =^ =~)
+		(format nil "~A ~A ~A"
+			(output-c-helper (second form))
+			(car form)
+			(output-c-helper (third form))))
+	       ((+ - * / ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
+		(c-output-infix-operator form))
+	       (|[]| ; array reference
+		(if (= (length form) 2)
+		    (format nil "~A[]" (output-c-helper (second form)))
+		    (format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form)))))
+	       (|if| ; if statement
+		(c-output-if form))
+	       (|while| ;while statement
+		(c-output-while form))
+	       (|for| ; for statement
+		(c-output-for form))
+	       (|cast| ; special case of cast funcall operator (cast type var)
+		(format nil "((~A)~A)" (output-c-helper (second form)) (output-c-helper (third form))))
+	       ((|var| |auto| |static| |extern|) ; variable decleration
+		(c-output-variable-decleration form))
+	       (|goto| ; goto statement
+		(format nil "goto ~A" (second form)))
+	       (|:| ; labels are precedded by a colon as a function call
+		(format nil "~A:" (second form)))
+	       ('quote ; characters are single quoted, using double backslashes when required
+		(if (eq '|space| (second form))
+		    (format nil "' '" )
+		    (format nil "'~A'" (second form))))
+	       (otherwise ; function call or post-increment/decriment
+		(if (or (eq (second form) '++)
+			(eq (second form) '--))
+		    (format nil "(~A)~A" (output-c-helper (first form)) (second form))
+		    (c-output-function-call form)))))
+	 (typecase form
+	   (string (format nil "\"~A\"" form))
+	   (fixnum (format nil "~A" form))
+	   (float (format nil "~A" form))
+	   (symbol (format nil "~A" form)))))
+
 (def t output-c ((list form) (simple-string filename) (fixnum line) &optional (stream s *standard-input*))
   (case (car form)
     (#\# (progn
@@ -300,7 +290,7 @@ while
 	   ; found function definition
 	   (vars ((fixnum numvardecl (length args))
 		  (fixnum curvardecl 0))
-	     (format s "~A ~A(" (output-c-helper rettype t) name)
+	     (format s "~A ~A(" (output-c-helper rettype) name)
 	     ; print argument list
 	     (if args
 		 (mapcar (lambda (vardecl)
@@ -308,12 +298,12 @@ while
 			   (if (= curvardecl numvardecl)
 			       (if (listp vardecl)
 				   (if body
-				       (format s "~A ~A) {~%" (output-c-helper (first vardecl) t) (output-c-helper (second vardecl)))
-				       (format s "~A ~A)~%" (output-c-helper (first vardecl) t) (output-c-helper (second vardecl))))
+				       (format s "~A ~A) {~%" (output-c-helper (first vardecl)) (output-c-helper (second vardecl)))
+				       (format s "~A ~A)~%" (output-c-helper (first vardecl)) (output-c-helper (second vardecl))))
 				   (if body
-				       (format s "~A) {" (output-c-helper vardecl t)) ; special case for (void)
-				       (format s "~A)" (output-c-helper vardecl t)))) ; special case for (void)
-			       (format s "~A ~A, " (output-c-helper (first vardecl) t) (output-c-helper (second vardecl)))))
+				       (format s "~A) {" (output-c-helper vardecl)) ; special case for (void)
+				       (format s "~A)" (output-c-helper vardecl)))) ; special case for (void)
+			       (format s "~A ~A, " (output-c-helper (first vardecl)) (output-c-helper (second vardecl)))))
 			 args)
 		 (if body
 		     (format s ") {")

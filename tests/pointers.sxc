@@ -2,7 +2,7 @@
 (#include <stdlib.h>)
 
 (int main ((int argc) (char (** argv)))
-     (var (* int) (= x 0))
+     (var int (= (* x) 0))
      (= x (malloc (sizeof x)))
      (= (* x) 42)
      (printf "x: %d\n" (* x))
