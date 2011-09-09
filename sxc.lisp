@@ -229,7 +229,7 @@ while
 	      s)))
 
 (def simple-string output-c-helper (((or list symbol string fixnum float) form) &optional (boolean is-type-or-var-decl nil))
-;  (format t "***~A ~A~%" form is-type-or-var-decl)
+;  (format t "***'~A' ~A~%" form is-type-or-var-decl)
   (if is-type-or-var-decl
       (if (listp form)
 	(case (car form)
@@ -254,7 +254,9 @@ while
 		((+ - * / ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
 		 (c-output-infix-operator form))
 		(|[]| ; array reference
-		 (format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form))))
+		 (if (= (length form) 2)
+		     (format nil "~A[]" (output-c-helper (second form)))
+		     (format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form)))))
 		(|if| ; if statement
 		 (c-output-if form))
 		(|while| ;while statement
@@ -303,9 +305,9 @@ while
 			   (incf curvardecl)
 			   (if (= curvardecl numvardecl)
 			       (if body
-				   (format s "~A ~A) {~%" (output-c-helper (first vardecl) t) (second vardecl))
-				   (format s "~A ~A)~%" (output-c-helper (first vardecl) t) (second vardecl)))
-			       (format s "~A ~A, " (output-c-helper (first vardecl) t) (second vardecl))))
+				   (format s "~A ~A) {~%" (output-c-helper (first vardecl) t) (output-c-helper (second vardecl)))
+				   (format s "~A ~A)~%" (output-c-helper (first vardecl) t) (output-c-helper (second vardecl))))
+			       (format s "~A ~A, " (output-c-helper (first vardecl) t) (output-c-helper (second vardecl)))))
 			 args)
 		 (format s ") {"))
 	     (if body
