@@ -292,6 +292,8 @@ while
 	   (format s "~A" #\#)
 	   (mapcar (lambda (x) (format s "~A " x)) (cdr form))
 	   (format s "~%")))
+    ((|var| |static| |extern|)
+     (format s "~A;~%" (output-c-helper form)))
     (otherwise
      (handler-case ; try for function definition
 	 (destructuring-bind (rettype name args &body body) form
@@ -304,12 +306,18 @@ while
 		 (mapcar (lambda (vardecl)
 			   (incf curvardecl)
 			   (if (= curvardecl numvardecl)
-			       (if body
-				   (format s "~A ~A) {~%" (output-c-helper (first vardecl) t) (output-c-helper (second vardecl)))
-				   (format s "~A ~A)~%" (output-c-helper (first vardecl) t) (output-c-helper (second vardecl))))
+			       (if (listp vardecl)
+				   (if body
+				       (format s "~A ~A) {~%" (output-c-helper (first vardecl) t) (output-c-helper (second vardecl)))
+				       (format s "~A ~A)~%" (output-c-helper (first vardecl) t) (output-c-helper (second vardecl))))
+				   (if body
+				       (format s "~A) {" (output-c-helper vardecl t)) ; special case for (void)
+				       (format s "~A)" (output-c-helper vardecl t)))) ; special case for (void)
 			       (format s "~A ~A, " (output-c-helper (first vardecl) t) (output-c-helper (second vardecl)))))
 			 args)
-		 (format s ") {"))
+		 (if body
+		     (format s ") {")
+		     (format s ")~%")))
 	     (if body
 		 (progn
 		   (mapcar (lambda (form)
