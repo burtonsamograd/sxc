@@ -21,7 +21,7 @@
 (defparameter sxc-read-table (copy-readtable nil))
 (set-macro-character #\# (lambda (stream closec)
 			   (declare (ignore stream closec))
-			   #\#)
+			   '|#|)
 		     nil sxc-read-table)
 (set-macro-character #\\ (lambda (stream closec)
 			    (declare (ignore stream closec))
@@ -32,8 +32,13 @@
 			   '|:|)
 		     nil sxc-read-table)
 (set-macro-character #\, (lambda (stream closec)
-			   (declare (ignore stream closec))
-			   '|,|)
+			   (declare (ignore closec))
+			   (let ((c (peek-char nil stream)))
+			     (if (char= c #\ )
+				 (progn
+				   (read-char stream)
+				   '|,|)
+				 (eval (read stream)))))
 		     nil sxc-read-table)
 (set-macro-character #\| (lambda (stream closec)
 			   (declare (ignore closec))
@@ -271,61 +276,67 @@ while
        s))
 
 (def simple-string output-c-helper (((or list symbol string fixnum float) form))
-;  (format t "***'~A' ~A~%" form is-type-or-var-decl)
+;  (format t "***'~A'~%" form)
      (if (listp form)
-	 (if (and (>= (length form) 2)
-		  (or (eq (second form) '++)
-		      (eq (second form) '--)))
-	     (format nil "((~A)~A)" (output-c-helper (first form)) (second form))
-	     (if (listp (car form)) ; variable decleration
-		 (format nil "~A ~A" (output-c-helper (car form)) (output-c-helper (second form)))
-		 (case (car form) ; keyword, operator or function (or macro)
-		   (=
-		    (c-output-equals form))
-		   ((=+ =- =* =/ =^ =~)
-		    (format nil "~A ~A ~A"
-			    (output-c-helper (second form))
-			    (car form)
-			    (output-c-helper (third form))))
-		   ((+ - * / % ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
-		    (c-output-infix-operator form))
-		   (|,| ; comma operator
-		    (c-output-comma form))
-		   (|[]| ; array reference
-		    (if (= (length form) 2)
-			(format nil "~A[]" (output-c-helper (second form)))
-			(format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form)))))
-		   (|if| ; if statement
-		    (c-output-if form))
-		   (|switch| ; switch statement
+	 (progn
+	   (setf form (remove '|COMMENT| form)) ; remove 'comment symbols
+	   (if (and (>= (length form) 2)
+		    (or (eq (second form) '++)
+			(eq (second form) '--)))
+	       (format nil "((~A)~A)" (output-c-helper (first form)) (second form))
+	       (if (listp (car form)) ; variable decleration
+		   (format nil "~A ~A" (output-c-helper (car form)) (output-c-helper (second form)))
+		   (case (car form) ; keyword, operator or function (or macro)
+		     (=
+		      (c-output-equals form))
+		     ((=+ =- =* =/ =^ =~)
+		      (format nil "~A ~A ~A"
+			      (output-c-helper (second form))
+			      (car form)
+			      (output-c-helper (third form))))
+		     ((+ - * / % ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
+		      (c-output-infix-operator form))
+		     (|,| ; comma operator
+		      (c-output-comma form))
+		     (|[]| ; array reference
+		      (if (= (length form) 2)
+			  (format nil "~A[]" (output-c-helper (second form)))
+			  (format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form)))))
+		     (|if| ; if statement
+		      (c-output-if form))
+		     (|switch| ; switch statement
 		    (c-output-switch form))
-		   (|while| ;while statement
-		    (c-output-while form))
-		   (|for| ; for statement
-		    (c-output-for form))
-		   (|cast| ; special case of cast funcall operator (cast type var)
-		    (format nil "((~A)~A)" (output-c-helper (second form)) (output-c-helper (third form))))
-		   ((|var| |auto| |static| |extern|) ; variable decleration
-		    (c-output-variable-decleration form))
-		   (|goto| ; goto statement
-		    (format nil "goto ~A" (second form)))
-		   (|:| ; labels are precedded by a colon as a function call
-		    (format nil "~A:" (second form)))
-		   ('quote ; characters are single quoted, using double backslashes when required
-		    (if (eq '|space| (second form))
-			(format nil "' '" )
-			(format nil "'~A'" (second form))))
-	       (otherwise ; function call
-		(c-output-function-call form)))))
-	 (typecase form
-	   (string (format nil "\"~A\"" form))
-	   (fixnum (format nil "~A" form))
-	   (float (format nil "~A" form))
-	   (symbol (format nil "~A" form)))))
-
+		     (|while| ;while statement
+		      (c-output-while form))
+		     (|for| ; for statement
+		      (c-output-for form))
+		     (|cast| ; special case of cast funcall operator (cast type var)
+		      (format nil "((~A)~A)" (output-c-helper (second form)) (output-c-helper (third form))))
+		     ((|var| |auto| |static| |extern|) ; variable decleration
+		      (c-output-variable-decleration form))
+		     (|goto| ; goto statement
+		      (format nil "goto ~A" (second form)))
+		     (|:| ; labels are precedded by a colon as a function call
+		      (format nil "~A:" (second form)))
+		     ('quote ; characters are single quoted, using double backslashes when required
+		      (if (eq '|space| (second form))
+			  (format nil "' '" )
+			  (format nil "'~A'" (second form))))
+		     (otherwise ; function call
+		      (c-output-function-call form))))))
+	     (typecase form
+	       (string (format nil "\"~A\"" form))
+	       (fixnum (format nil "~A" form))
+	       (float (format nil "~A" form))
+	       (symbol (if (not (eq form 'comment))
+			 (format nil "~A" form)
+			 "__comment__")))))
+		
+	     
+     
 (def t output-c ((list form) (simple-string filename) (fixnum line) &optional (stream s *standard-input*))
   (case (car form)
-    (#\# (progn
+    (|#| (progn
 	   (format s "~A" #\#)
 	   (mapcar (lambda (x) (format s "~A " x)) (cdr form))
 	   (format s "~%")))
