@@ -58,6 +58,36 @@
 				   '(quote | |))
 				 `(quote ,(read stream)))))
 		     nil sxc-read-table)
+(set-macro-character #\/ (lambda (stream closec) ; handle c/c++ style comments
+			   (declare (ignore closec))
+			   (block nil
+			     (let ((c (peek-char nil stream)))
+			       (case c
+				 (#\/ (read-line stream) (return 'comment)) ; c++ comments
+				 (#\*			    ; c comments
+				  (vars ((fixnum nesting 1))
+					(loop
+					   (vars ((character c (peek-char nil stream)))
+						 (case c
+						   (#\/
+						    (read-char stream)
+						    (vars ((character c2 (peek-char nil stream)))
+							  (when (char= c2 #\*)
+							    (read-char stream)
+							    (incf nesting))))
+						   (#\*
+						    (read-char stream)
+						    (vars ((character c2 (peek-char nil stream)))
+							  (when (char= c2 #\/)
+							    (read-char stream)
+							    (decf nesting))))
+						   (otherwise 
+						    (read-char stream))))
+					   (when (= nesting 0)
+					     (return 'comment)))))
+			       (otherwise
+				'|/|)))))
+		     nil sxc-read-table)
 
 #| c language keywords
 
@@ -369,12 +399,16 @@ while
 	     (if body
 		 (progn
 		   (mapcar (lambda (form)
-			     (format s "~A;~%" (output-c-helper form)))
+			     (vars ((simple-string output (output-c-helper form)))
+				   (unless (string= output "__comment__")
+				     (format s "~A;~%" output))))
 			   body)
 		   (format s "~%}~%"))
 		 (format s ";~%"))))
        (error (e)
-	 (format s "~A;~%" (output-c-helper form)))))))
+	 (vars ((simple-string output (output-c-helper form)))
+	       (when (not (string= output "__comment__"))
+		 (format s "~A;~%" output))))))))
 
 
      
@@ -391,17 +425,18 @@ while
 	      (loop
 		 (let ((saved-readtable-case (readtable-case *readtable*)))
 		   (setf (readtable-case *readtable*) :preserve)
-		   (HANDLER-CASE 
+		   (HANDLER-CASE  ; this needs to be uppercase as we have just changed the readtable-case
 		       (MULTIPLE-VALUE-BIND (FORM POS)
 			   (READ-FROM-STRING CONTENTS NIL NIL :START CURPOS)
-			 (SETF (READTABLE-CASE *READTABLE*) SAVED-READTABLE-CASE)
+			 (SETF (READTABLE-CASE *READTABLE*) SAVED-READTABLE-CASE) ; stop requiring upcase
 			 (when (not form)
 			   (return))
-			 (for (i curpos) (< i pos) (incf i)
+			 (for (i curpos) (< i pos) (incf i) ; calculate curline
 			      (when (char= (char contents i) #\Newline)
 				(incf curline)))
 			 (setf curpos pos)
-			 (output-c form filename curline *standard-output*))
+			 (unless (eq form 'comment) ; don't output top level comments
+			     (output-c form filename curline *standard-output*)))
 		     (END-OF-FILE (E)
 		       (FORMAT *ERROR-OUTPUT* "~S: end of file while reading form at or after line ~A~%" FILENAME CURLINE)
 		       (RETURN-FROM  MAIN NIL)))))))))))
