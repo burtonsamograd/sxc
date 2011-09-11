@@ -16,9 +16,9 @@
      /* strip whitespace and comments */
      (while (!= (= c (getc f)) EOF)
        (if (strchr "<>+-.,[]" c)
-	   (= *ip++ c))) ; note that symbols pass through; one way to get *ip++ is to put it literally
+	   (= (*?++ ip) c))) ; note how to perform *ip++ is (*?++ ip)
 
-     (= (*ip ++) 0) ; see above comment, but this is a slightly different usage to get the proper (*ip++) output
+     (= (*?++ ip) 0) ; see above comment
      (= ip code)
 
      (while (!= (= c *ip++) 0)

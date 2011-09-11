@@ -400,6 +400,10 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (format nil "goto ~A" (second form)))
 		   (|:| ; labels are precedded by a colon as a function call
 		    (format nil "~A:" (second form)))
+		   (*?++ ; hack function for performing *ptr++
+		    (format nil "(*~A++)" (second form)))
+		   (*?-- ; hack function for performing *ptr--
+		    (format nil "(*~A--)" (second form)))
 		   ('quote ; characters are single quoted, using double backslashes when required
 		    (if (eq '|space| (second form))
 			(format nil "' '" )

@@ -1,1 +1,5 @@
--- to do something like *pointer++ you must enter it either literally as '*pointer++' or as '(*pointer ++)'; same with *++pointer
+-- to compile *pointer++ you must enter it either literally as the
+   symbol '*pointer++' or as '(*pointer ++)' or using the function
+   (*?++ pointer).  Using the *?++ function is preferred so as to not
+   need symbol creation in the code generating program.  Same for
+   *pointer--.
