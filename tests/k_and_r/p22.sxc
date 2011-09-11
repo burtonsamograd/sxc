@@ -3,7 +3,6 @@
 (int main ()
      (var int c i nwhite nother)
      (var int ([] ndigit 10))
-     (var int ([] x 10))
 
      (= nwhite nother 0)
 
@@ -23,7 +22,9 @@
 
      (for (= i 0) (< i 10) (++ i)
 	  (printf " %d" ([] ndigit i)))
-     (printf ", white space = %d, other = %d\n" nwhite nother))
+     (printf ", white space = %d, other = %d\n" nwhite nother)
+
+     (return 0))
 			 
 	    
 	  
