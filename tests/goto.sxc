@@ -19,4 +19,6 @@
 
      (: after_loop)
 
-     (puts "after loop"))
+     (puts "after loop")
+
+     (return 0))
