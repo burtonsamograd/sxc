@@ -76,10 +76,11 @@
 				   `(quote ,(intern (make-array 1 :element-type 'character :initial-element c))))
 				 `(quote ,(read stream)))))
 		     nil *sxc-readtable*)
-(set-macro-character #\/ (lambda (stream closec) ; handle c/c++ style comments
+; handle c/c++ style comments
+(set-macro-character #\/ (lambda (stream closec) 
 			   (declare (ignore closec))
 			   (block nil
-			     (let ((c (peek-char nil stream)))
+			     (vars ((character c (peek-char nil stream)))
 			       (case c
 				 (#\/ (read-line stream) (return 'comment)) ; c++ comments
 				 (#\*			    ; c comments
@@ -104,7 +105,10 @@
 					   (when (= nesting 0)
 					     (return 'comment)))))
 			       (otherwise
-				'|/|)))))
+				(vars ((character c (peek-char nil stream)))
+				  (if (not (char= c #\ ))
+				      (intern (concatenate 'string "/" (symbol-name (read stream))))
+				      '|/|)))))))
 		     nil *sxc-readtable*)
 
 #| c language keywords
@@ -221,7 +225,8 @@ while
        (destructuring-bind (if-atom condition &rest body) form
 	 (format s "if(~A) {" (output-c-helper condition))
 	 (mapcar (lambda (body-form)
-		   (if (eq (car body-form) '|else|)
+		   (if (and (listp body-form)
+			    (eq (car body-form) '|else|))
 		       ;; else forms are inside the if body; solves dangling else problem
 		       ;; but that means you can't use a function named else in the body of 
 		       ;; an if statement (which you can't do in C anyways)
@@ -325,6 +330,17 @@ while
 		     (rest form)))
        s))
 
+(def simple-string c-output-do-while ((list form))
+     (with-output-to-string (s)
+       (format s "do {~%")
+       (mapcar (lambda (expr)
+		 (if (and (listp expr)
+			  (eq (car expr) '|while|))
+		     (format s "} while(~A)" (output-c-helper (second expr)))
+		     (format s "~A;~%" (output-c-helper expr))))
+	       (cdr form))
+       s))
+		      
 (def simple-string output-c-type-helper ((t form))
      "called by above functions when we are expecting a type decleration.
 These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
@@ -371,7 +387,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		 (case (car form) ; keyword, operator or function (or macro)
 		   (=
 		    (c-output-equals form))
-		   ((=+ =- =* =/ =^ =~)
+		   ((+= -= *= /= ^= ~=)
 		    (format nil "~A ~A ~A"
 			    (output-c-helper (second form))
 			    (car form)
@@ -390,6 +406,8 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (c-output-switch form))
 		   (|while| ;while statement
 		    (c-output-while form))
+		   (|do| ; do/while statement
+		    (c-output-do-while form))
 		   (|for| ; for statement
 		    (c-output-for form))
 		   (|cast| ; special case of cast funcall operator (cast type var)
