@@ -1,0 +1,1 @@
+-- to do something like *pointer++ you must enter it either literally as '*pointer++' or as '(*pointer ++)'; same with *++pointer
