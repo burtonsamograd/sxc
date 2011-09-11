@@ -17,20 +17,21 @@
 	(end-of-file (e)
 	    (return-from read-whole-file contents))))))
 
+(defparameter *saved-readtable* *readtable*)
+(defparameter *sxc-readtable* (copy-readtable nil))
 ; disable # as macro character so we can handle (#include ...) and such
-(defparameter sxc-read-table (copy-readtable nil))
 (set-macro-character #\# (lambda (stream closec)
 			   (declare (ignore stream closec))
 			   '|#|)
-		     nil sxc-read-table)
+		     nil *sxc-readtable*)
 (set-macro-character #\\ (lambda (stream closec)
 			    (declare (ignore stream closec))
 			    (format nil "\\~A" (read-char stream)))
-		     nil sxc-read-table)
+		     nil *sxc-readtable*)
 (set-macro-character #\: (lambda (stream closec)
 			   (declare (ignore stream closec))
 			   '|:|)
-		     nil sxc-read-table)
+		     nil *sxc-readtable*)
 (set-macro-character #\, (lambda (stream closec)
 			   (declare (ignore closec))
 			   (let ((c (peek-char nil stream)))
@@ -38,8 +39,24 @@
 				 (progn
 				   (read-char stream)
 				   '|,|)
-				 (eval (read stream)))))
-		     nil sxc-read-table)
+				 (read stream))))
+		     
+				 ;(let ((*readtable* *saved-readtable*))
+				  ; (eval (read stream))))))
+		     nil *sxc-readtable*)
+(require 'sb-cltl2)
+#|(set-macro-character #\$ (lambda (stream closec)
+			   (declare (ignore closec))
+			   (let ((c (peek-char nil stream)))
+			     (error (macroexpand (read stream)))
+			     (if (char= c #\ )
+				 (progn
+				   (read-char stream)
+				   '|$|)
+				 (macroexpand (read stream)))))
+;				 (sb-cltl2:macroexpand-all (read stream)))))
+		     nil *sxc-readtable*)
+|#
 (set-macro-character #\| (lambda (stream closec)
 			   (declare (ignore closec))
 			   (let ((c (peek-char nil stream)))
@@ -48,16 +65,17 @@
 				   (read-char stream)
 				   '|\|\||)
 				 '|\||)))
-		     nil sxc-read-table)
+		     nil *sxc-readtable*)
+; handle single quote (') for characters, '  (quote space) for space character
 (set-macro-character #\' (lambda (stream closec)
 			   (declare (ignore closec))
 			   (let ((c (peek-char nil stream)))
-			     (if (char= c #\ )
+			     (if (or (char= c #\ ) (char= c #\.) (char= c #\,))
 				 (progn
 				   (read-char stream)
-				   '(quote | |))
+				   `(quote ,(intern (make-array 1 :element-type 'character :initial-element c))))
 				 `(quote ,(read stream)))))
-		     nil sxc-read-table)
+		     nil *sxc-readtable*)
 (set-macro-character #\/ (lambda (stream closec) ; handle c/c++ style comments
 			   (declare (ignore closec))
 			   (block nil
@@ -87,7 +105,7 @@
 					     (return 'comment)))))
 			       (otherwise
 				'|/|)))))
-		     nil sxc-read-table)
+		     nil *sxc-readtable*)
 
 #| c language keywords
 
@@ -189,12 +207,12 @@ while
 	      (format s "~A ~A " (if (eq (first form) '|var|)
 				     ""
 				     (first form))
-		      (output-c-helper (second form)))
+		      (output-c-type-helper (second form)))
 	      (mapcar (lambda (var)
 			(incf curvar)
 			(if (= curvar nvars)
-			    (format s "~A" (output-c-helper var))
-			    (format s "~A, " (output-c-helper var))))
+			    (format s "~A" (output-c-type-helper var))
+			    (format s "~A, " (output-c-type-helper var))))
 		      (cddr form))
 	      s)))
 
@@ -278,14 +296,16 @@ while
 	 (format s "switch (~A) {~%" (output-c-helper expression))
 	 (mapcar (lambda (switch-case)
 		       (if (listp (car switch-case))
-			   (mapcar (lambda (const-expr)
-				     (format s "case ~A: " (output-c-helper const-expr)))
-				   (car switch-case))
+			   (if (eq (caar switch-case) 'quote) ; handle character constant expressions which start with (quote ...)
+			       (format s "case ~A: " (output-c-helper (car switch-case)))
+			       (mapcar (lambda (const-expr)
+					 (format s "case ~A: " (output-c-helper const-expr)))
+				       (car switch-case)))
 			   (if (eq (car switch-case) '|default|)
 			       (format s "default: ~%")
 			       (format s "case ~A: " (output-c-helper (car switch-case)))))
 		       (format s "{~%")
-		       (mapcar (lambda (switch-case-expr)
+		       (mapcar (lambda (switch-case-expr) ; output body statements, skipping over "__comment__"'s
 				 (format s "~A;~%" (output-c-helper switch-case-expr)))
 			       (rest switch-case))
 		       (format s "}~%"))
@@ -305,64 +325,95 @@ while
 		     (rest form)))
        s))
 
+(def simple-string output-c-type-helper ((t form))
+     "called by above functions when we are expecting a type decleration.
+These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
+  (with-output-to-string (s)
+    (if (listp form)
+	(case (car form)
+	  ((* ** *** ****) ; types with pointers need the *'s after the type, not before
+	   (format s "~A~A" (output-c-type-helper (second form)) (first form)))
+	  ([] ; there was a problem with declerations being surrounded by () so this needs to be handled specially
+	   (if (= (length form) 3) 
+	       (format s "~A[~A]" (remove #\) (remove #\( (output-c-helper (second form)))) (output-c-helper (third form)))
+	       (format s "~A[]" (remove #\) (remove #\( (output-c-helper (second form)))))))
+	  (=
+	   (format s "~A" (c-output-equals form)))
+	  (otherwise
+	   (mapcar (lambda (symbol)
+		     (format s "~A " (output-c-helper symbol)))
+		form)))
+	(format s "~A " form))
+    s))
+
+
+(def t remove-tree ((t value) (t tree))
+     "like remove but works on a tree"
+     (ldef ((t remove-tree-helper ((symbol value) (t tree) (symbol s))
+	       (if (equal tree value)
+		   s
+		   (if (atom tree)
+		       tree
+		       (remove s (cons (remove-tree-helper value (car tree) s)
+				       (remove-tree-helper value (cdr tree) s)))))))
+	   (remove-tree-helper value tree (gensym))))
+
 (def simple-string output-c-helper (((or list symbol string fixnum float) form))
 ;  (format t "***'~A'~%" form)
      (if (listp form)
-	 (progn
-	   (setf form (remove '|COMMENT| form)) ; remove 'comment symbols
-	   (if (and (>= (length form) 2)
-		    (or (eq (second form) '++)
-			(eq (second form) '--)))
-	       (format nil "((~A)~A)" (output-c-helper (first form)) (second form))
-	       (if (listp (car form)) ; variable decleration
-		   (format nil "~A ~A" (output-c-helper (car form)) (output-c-helper (second form)))
-		   (case (car form) ; keyword, operator or function (or macro)
-		     (=
-		      (c-output-equals form))
-		     ((=+ =- =* =/ =^ =~)
-		      (format nil "~A ~A ~A"
-			      (output-c-helper (second form))
-			      (car form)
-			      (output-c-helper (third form))))
-		     ((+ - * / % ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
-		      (c-output-infix-operator form))
-		     (|,| ; comma operator
-		      (c-output-comma form))
-		     (|[]| ; array reference
-		      (if (= (length form) 2)
-			  (format nil "~A[]" (output-c-helper (second form)))
-			  (format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form)))))
-		     (|if| ; if statement
-		      (c-output-if form))
-		     (|switch| ; switch statement
+	 (if (and (>= (length form) 2) ; special case for (x ++) or (x --)
+		  (or (eq (second form) '++)
+		      (eq (second form) '--)))
+	     (format nil "(~A~A)" (output-c-helper (first form)) (second form))
+		 
+	     (if (listp (car form)) ; variable decleration
+		 (format nil "~A ~A" (output-c-helper (car form)) (output-c-helper (second form)))
+		 (case (car form) ; keyword, operator or function (or macro)
+		   (=
+		    (c-output-equals form))
+		   ((=+ =- =* =/ =^ =~)
+		    (format nil "~A ~A ~A"
+			    (output-c-helper (second form))
+			    (car form)
+			    (output-c-helper (third form))))
+		   ((+ - * / % ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
+		    (c-output-infix-operator form))
+		   (|,| ; comma operator
+		    (c-output-comma form))
+		   (|[]| ; array reference
+		    (if (= (length form) 2)
+			(format nil "~A[]" (output-c-helper (second form)))
+			(format nil "(~A[~A])" (output-c-helper (second form)) (output-c-helper (third form)))))
+		   (|if| ; if statement
+		    (c-output-if form))
+		   (|switch| ; switch statement
 		    (c-output-switch form))
-		     (|while| ;while statement
-		      (c-output-while form))
-		     (|for| ; for statement
-		      (c-output-for form))
-		     (|cast| ; special case of cast funcall operator (cast type var)
-		      (format nil "((~A)~A)" (output-c-helper (second form)) (output-c-helper (third form))))
-		     ((|var| |auto| |static| |extern|) ; variable decleration
-		      (c-output-variable-decleration form))
-		     (|goto| ; goto statement
-		      (format nil "goto ~A" (second form)))
-		     (|:| ; labels are precedded by a colon as a function call
-		      (format nil "~A:" (second form)))
-		     ('quote ; characters are single quoted, using double backslashes when required
-		      (if (eq '|space| (second form))
-			  (format nil "' '" )
-			  (format nil "'~A'" (second form))))
-		     (otherwise ; function call
-		      (c-output-function-call form))))))
+		   (|while| ;while statement
+		    (c-output-while form))
+		   (|for| ; for statement
+		    (c-output-for form))
+		   (|cast| ; special case of cast funcall operator (cast type var)
+		    (format nil "((~A)~A)" (output-c-helper (second form)) (output-c-helper (third form))))
+		   ((|var| |auto| |static| |extern|) ; variable decleration
+		    (c-output-variable-decleration form))
+		   (|goto| ; goto statement
+		    (format nil "goto ~A" (second form)))
+		   (|:| ; labels are precedded by a colon as a function call
+		    (format nil "~A:" (second form)))
+		   ('quote ; characters are single quoted, using double backslashes when required
+		    (if (eq '|space| (second form))
+			(format nil "' '" )
+			(format nil "'~A'" (second form))))
+		   (otherwise ; function call
+		    (c-output-function-call form)))))
 	     (typecase form
 	       (string (format nil "\"~A\"" form))
 	       (fixnum (format nil "~A" form))
 	       (float (format nil "~A" form))
+	       (character (format nil "'~A'" form))
 	       (symbol (if (not (eq form 'comment))
 			 (format nil "~A" form)
 			 "__comment__")))))
-		
-	     
      
 (def t output-c ((list form) (simple-string filename) (fixnum line) &optional (stream s *standard-input*))
   (case (car form)
@@ -386,8 +437,8 @@ while
 			   (if (= curvardecl numvardecl)
 			       (if (listp vardecl)
 				   (if body
-				       (format s "~A ~A) {~%" (output-c-helper (first vardecl)) (output-c-helper (second vardecl)))
-				       (format s "~A ~A)~%" (output-c-helper (first vardecl)) (output-c-helper (second vardecl))))
+				       (format s "~A ~A) {~%" (output-c-type-helper (first vardecl)) (output-c-helper (second vardecl)))
+				       (format s "~A ~A)~%" (output-c-type-helper (first vardecl)) (output-c-helper (second vardecl))))
 				   (if body
 				       (format s "~A) {" (output-c-helper vardecl)) ; special case for (void)
 				       (format s "~A)" (output-c-helper vardecl)))) ; special case for (void)
@@ -410,9 +461,6 @@ while
 	       (when (not (string= output "__comment__"))
 		 (format s "~A;~%" output))))))))
 
-
-     
-
 (def t main ()
   (vars (((list-of simple-string) files-to-process (cdr *posix-argv*)))
     (dolist (filename files-to-process)
@@ -421,25 +469,27 @@ while
 		 (fixnum curpos 0)
 		 (fixnum i 0)
 		 (fixnum curline 0))
-	    (let ((*readtable* sxc-read-table))
-	      (loop
-		 (let ((saved-readtable-case (readtable-case *readtable*)))
-		   (setf (readtable-case *readtable*) :preserve)
-		   (HANDLER-CASE  ; this needs to be uppercase as we have just changed the readtable-case
-		       (MULTIPLE-VALUE-BIND (FORM POS)
-			   (READ-FROM-STRING CONTENTS NIL NIL :START CURPOS)
-			 (SETF (READTABLE-CASE *READTABLE*) SAVED-READTABLE-CASE) ; stop requiring upcase
-			 (when (not form)
-			   (return))
-			 (for (i curpos) (< i pos) (incf i) ; calculate curline
-			      (when (char= (char contents i) #\Newline)
-				(incf curline)))
-			 (setf curpos pos)
-			 (unless (eq form 'comment) ; don't output top level comments
-			     (output-c form filename curline *standard-output*)))
-		     (END-OF-FILE (E)
-		       (FORMAT *ERROR-OUTPUT* "~S: end of file while reading form at or after line ~A~%" FILENAME CURLINE)
-		       (RETURN-FROM  MAIN NIL)))))))))))
+		(setf *saved-readtable* *readtable*)
+		(let ((*readtable* *sxc-readtable*))
+		  (loop
+		     (let ((saved-readtable-case (readtable-case *readtable*)))
+		       (setf (readtable-case *readtable*) :preserve)
+		       (HANDLER-CASE  ; this needs to be uppercase as we have just changed the readtable-case
+			   (MULTIPLE-VALUE-BIND (FORM POS)
+			       (READ-FROM-STRING CONTENTS NIL NIL :START CURPOS)
+			     (SETF (READTABLE-CASE *READTABLE*) SAVED-READTABLE-CASE) ; stop requiring upcase
+			     (when (not form)
+			       (return))
+			     (for (i curpos) (< i pos) (incf i) ; calculate curline
+				  (when (char= (char contents i) #\Newline)
+				    (incf curline)))
+			     (setf curpos pos)
+			     (setf form (remove-tree 'comment form)) ; remove 'comment symbols
+			     (unless (typep form 'symbol) ; don't output top level comments
+			       (output-c form filename curline *standard-output*)))
+			 (END-OF-FILE (E)
+			   (FORMAT *ERROR-OUTPUT* "~S: end of file while reading form at or after line ~A~%" FILENAME CURLINE)
+			   (RETURN-FROM  MAIN NIL)))))))))))
 			 
 
 (main)
