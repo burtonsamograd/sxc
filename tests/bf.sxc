@@ -1,0 +1,66 @@
+(#include <stdio.h>)
+(#include <stdlib.h>)
+(#include <string.h>)
+
+(var char ([] code 32768))
+(var (unsigned char) ([] m 37268))
+(var (unsigned char) (= (* dp) m) (= (* dendp) (- (+ m (sizeof m)) 1)))
+
+(int main ((int argc) (char (** argv)))
+     (var char c ([] (* sp) 255) (= (* ip) code))
+     (var int (= si 0))
+
+     (var FILE (= (* f) stdin))
+
+     /* strip whitespace and comments */
+     (while (!= (= c (getc f)) EOF)
+       (if (strchr "<>+-.,[]" c)
+	   (= *ip++ c))) ; note that symbols pass through; one way to get *ip++ is to put it literally
+
+     (= (*ip ++) 0) ; see above comment, but this is a slightly different usage to get the proper (*ip++) output
+     (= ip code)
+
+     (while (!= (= c *ip++) 0)
+       (switch c
+	       ('> // shift to next cell
+		   (dp ++)
+		   /* wraparound */
+		   (if (> dp dendp)
+		       (= dp m))
+		   break)
+	       ('< /* shift to previous cell */
+		   (dp --)
+		   /* wraparound */
+		   (if (< dp m)
+		       (= dp dendp))
+		   break)
+	       ('+ /* add 1 to current cell */
+		   ((* dp) ++)
+		   break)
+	       ('- /* sub 1 from current cell */
+		   ((* dp) --)
+		   break)
+	       ('. /* print the current cell */
+		   (putchar (* dp))
+		   break)
+	       (', /* read character into current cell */
+		      (= (* dp) (getchar))
+		      break)
+	       ('[ /* begin loop */
+		   /* if current cell not equal to zero */
+		   (if (* dp)
+		       /* save loop start */
+		       (= ([] sp (si ++)) (- ip 1))
+		       (else
+			(var int (= count 1))
+			(while (&& count (* ip))
+			  (if (== (* ip) '])
+			      (-- count)
+			      (else (if (== (* ip) '[)
+					(count ++))))
+			  (ip ++))))
+		   break)
+	       ((']) /* end loop */
+		   (= ip ([] sp (-- si)))
+		   break)))
+       (return 0))
