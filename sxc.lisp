@@ -7,6 +7,109 @@
 
 (load "typed-cl.lisp")
 
+(defmacro while (condition &body body)
+  `(do ()
+       ((not ,condition))
+     ,@body))
+
+(def list sxc-read-file ((stream s))
+  "read while file from s and return a list of forms, with each form containing a
+a combination of the form a it's line number. ie:
+ ((1 |#include| |<stdio.h>|)
+   (3 |float| |square| (3 (3 |float| |x|))
+   (4 |return| (4 * |x| |x|)))
+   (6 |int| |main| (6 (6 |int| |argc|) (6 |char| (6 ** |argv|)))
+   (7 |int| (7 = |i| |0|) (8 = |j| |1|)))
+
+after reading:
+
+  (#include <stdio.h>)
+
+  (float square ((float x))
+       (return (* x x)))
+
+  (int main ((int argc) (char (** argv)))
+       (int (= i 0)
+	    (= j 1)))
+"
+
+     (vars ((fixnum curline 1)
+	    (symbol nil-form (gensym)))
+       (ldef ((character getc ()
+			 (vars ((character c (read-char s t)))
+			   (when (char= c #\Newline)
+			     (incf curline))
+;			   (print c)
+			   c))
+	      (character peekc ()
+			 (peek-char nil s))
+	      (nil skip-whitespace ()
+;		   (print "skip-whitespace")
+		     (loop
+			(vars ((character c (peekc)))
+			  (if (or (char= c #\ ) (char= c #\Newline)
+				  (char= c #\Return) (char= c #\Tab))
+			      (getc)
+			      (return-from skip-whitespace nil)))))
+	      (simple-string read-string ((stream s))
+			     ;; strings are delimited by "..." with the only escaped characters being \" and \\
+;			     (print "read-string")
+			     (vars ((array result (make-array 0 :element-type 'character :adjustable t :fill-pointer 0))
+				    (character c (getc)))
+			       (while (not (char= c #\"))
+				 (when (char= c #\\)
+				   (vars ((character c2 (peekc)))
+				     (when (or (char= c2 #\") (char= c2 #\\))
+				       (vector-push-extend c result)
+				       (setf c (getc)))))
+				 (vector-push-extend c result)
+				 (setf c (getc)))
+			       result))
+	      (symbol read-symbol ((character start-char))
+		      (vars ((array result (make-array 1 :initial-element start-char
+						       :element-type 'character :adjustable t :fill-pointer 1))
+			     (character c (peekc))
+			     (string terminators (format nil "()\"' ~C~C~C" #\Newline #\Return #\Tab)))
+			(while (not (find c terminators))
+			  (vector-push-extend (getc) result)
+			  (setf c (peekc)))
+			(intern result)))
+		      
+	      (t read-form ()
+;		 (print "read-form")
+		 (skip-whitespace)
+		 (vars ((character c (getc))
+			(fixnum lineno curline))
+		   (case c
+		     (#\(
+		      (skip-whitespace)
+		      (if (char= (peekc) #\))
+			  (progn
+			    (getc)
+			    nil-form)
+			  (progn
+			    (vars ((list result nil)
+				   (t form nil))
+			      (loop
+				 (setf form (read-form))
+				 (if form
+				     (push form result)
+				     (return-from read-form `(,lineno .  ,(subst nil nil-form (nreverse result))))))))))
+		     (#\) nil)
+		     (#\" (read-string s))
+		     ;(#\/ (read-comment s)
+		     (otherwise
+		      (read-symbol c))))))
+	 (vars ((list retval nil))
+	   (handler-case 
+	       (loop
+		  (vars (((or list symbol) form (read-form)))
+		    (push (if (eq form nil-form) nil form) retval)))
+	     (end-of-file (e)
+	       (nreverse retval)))))))
+
+;(format t "~S~%" (sxc-read-file *standard-input*))
+
 (def simple-string read-whole-file ((simple-string filename))
   (vars ((simple-string contents "")
 	 (simple-string line ""))
