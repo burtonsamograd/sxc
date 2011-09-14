@@ -12,7 +12,18 @@
        ((not ,condition))
      ,@body))
 
-(def list sxc-read-file ((stream s))
+(def t remove-tree ((t value) (t tree))
+     "like remove but works on a tree"
+     (ldef ((t remove-tree-helper ((symbol value) (t tree) (symbol s))
+	       (if (equal tree value)
+		   s
+		   (if (atom tree)
+		       tree
+		       (remove s (cons (remove-tree-helper value (car tree) s)
+				       (remove-tree-helper value (cdr tree) s)))))))
+	   (remove-tree-helper value tree (gensym))))
+
+(def list sxc-read-file ((simple-string filename))
   "read while file from s and return a list of forms, with each form containing a
 a combination of the form a it's line number. ie:
  ((1 |#include| |<stdio.h>|)
@@ -33,18 +44,18 @@ after reading:
 	    (= j 1)))
 "
 
+  (with-open-file (s filename)
      (vars ((fixnum curline 1)
-	    (symbol nil-form (gensym)))
+	    (symbol nil-form (gensym))
+	    (symbol comment-form (gensym)))
        (ldef ((character getc ()
 			 (vars ((character c (read-char s t)))
 			   (when (char= c #\Newline)
 			     (incf curline))
-;			   (print c)
 			   c))
 	      (character peekc ()
 			 (peek-char nil s))
 	      (nil skip-whitespace ()
-;		   (print "skip-whitespace")
 		     (loop
 			(vars ((character c (peekc)))
 			  (if (or (char= c #\ ) (char= c #\Newline)
@@ -53,7 +64,6 @@ after reading:
 			      (return-from skip-whitespace nil)))))
 	      (simple-string read-string ((stream s))
 			     ;; strings are delimited by "..." with the only escaped characters being \" and \\
-;			     (print "read-string")
 			     (vars ((array result (make-array 0 :element-type 'character :adjustable t :fill-pointer 0))
 				    (character c (getc)))
 			       (while (not (char= c #\"))
@@ -74,9 +84,37 @@ after reading:
 			  (vector-push-extend (getc) result)
 			  (setf c (peekc)))
 			(intern result)))
-		      
-	      (t read-form ()
-;		 (print "read-form")
+	      (symbol skip-comment ()
+		      ;; skip /* comments */, return comment-form
+		      (vars ((fixnum lineno curline)
+			     (fixnum nesting 1)
+			     (character c (getc)))
+			(handler-case 
+			    (loop
+			       (case c
+				 (#\/
+				  (vars ((character c2 (getc)))
+				    (when (char= c2 #\*)
+				      (incf nesting))))
+				 (#\*
+				  (vars ((character c2 (getc)))
+				    (when (char= c2 #\/)
+				      (decf nesting)))))
+			       (when (= nesting 0)
+				 (return-from skip-comment comment-form))
+			       (setf c (getc)))
+			  (end-of-file (e)
+			      (format *error-output* "~A: ~A: unterminated /* ... */ comment starting on line ~A.~%"
+			       filename lineno lineno)))))
+	      (symbol skip-line-comment ()
+		      ;; skip // comments, return comment-form
+		      (vars ((character c (getc)))
+			(loop
+			     (when (eq c #\Newline)
+			       (return-from skip-line-comment comment-form))
+			   (setf c (getc)))))
+	      ((or list symbol string) read-form ()
+		 ; read a form, returning list, symbol or string
 		 (skip-whitespace)
 		 (vars ((character c (getc))
 			(fixnum lineno curline))
@@ -94,9 +132,17 @@ after reading:
 				 (setf form (read-form))
 				 (if form
 				     (push form result)
-				     (return-from read-form `(,lineno .  ,(subst nil nil-form (nreverse result))))))))))
+				     (return-from read-form `(,lineno .  ,(remove-tree comment-form
+										       (subst nil nil-form (nreverse result)))))))))))
 		     (#\) nil)
 		     (#\" (read-string s))
+		     (#\/ ; start of comment possibly
+		      (vars ((character c2 (peekc)))
+			(case c2
+			  (#\* (getc) (skip-comment))
+			  (#\/ (skip-line-comment))
+			  (otherwise ; not comment, read symbol
+			   (read-symbol c)))))
 		     ;(#\/ (read-comment s)
 		     (otherwise
 		      (read-symbol c))))))
@@ -106,9 +152,9 @@ after reading:
 		  (vars (((or list symbol) form (read-form)))
 		    (push (if (eq form nil-form) nil form) retval)))
 	     (end-of-file (e)
-	       (nreverse retval)))))))
+	       (nreverse retval))))))))
 
-;(format t "~S~%" (sxc-read-file *standard-input*))
+;(format t "~A~%" (sxc-read-file "test.sxc"))
 
 (def simple-string read-whole-file ((simple-string filename))
   (vars ((simple-string contents "")
@@ -464,18 +510,6 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		form)))
 	(format s "~A " form))
     s))
-
-
-(def t remove-tree ((t value) (t tree))
-     "like remove but works on a tree"
-     (ldef ((t remove-tree-helper ((symbol value) (t tree) (symbol s))
-	       (if (equal tree value)
-		   s
-		   (if (atom tree)
-		       tree
-		       (remove s (cons (remove-tree-helper value (car tree) s)
-				       (remove-tree-helper value (cdr tree) s)))))))
-	   (remove-tree-helper value tree (gensym))))
 
 (def simple-string output-c-helper (((or list symbol string fixnum float) form))
 ;  (format t "***'~A'~%" form)
