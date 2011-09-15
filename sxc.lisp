@@ -542,7 +542,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 			      (output-c-helper form filename s)
 			      (format s ";~%"))
 			    (rest form))
-		    (format s "~%}~%"))
+		    (format s "~%}"))
 		   (|if| ; if statement
 		    (c-output-if form filename s))
 		   (|switch| ; switch statement

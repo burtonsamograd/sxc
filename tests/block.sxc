@@ -1,5 +1,6 @@
 (#include <stdio.h>)
 
+// block scoping test
 (int main ((int argc) (char (** argv)))
      (var int (= x 10))
      ({}
