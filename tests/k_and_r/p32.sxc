@@ -1,15 +1,15 @@
 (#include <stdio.h>)
 
-(#define MAXLINE 1000)		; maximum input line size
+(#define MAXLINE 1000)		// maximum input line size
 
-(var int max)			; maximum lenth seen so far
-(var char ([] line MAXLINE))	; current input line
-(var char ([] longest MAXLINE))	; longest line saved here
+(var int max)			// maximum lenth seen so far
+(var char ([] line MAXLINE))	// current input line
+(var char ([] longest MAXLINE))	// longest line saved here
 
 (int _getline (void))
 (void copy (void))
 
-; print longest input line; specialized version
+// print longest input line// specialized version
 (int main ()
      (var int len)
      (extern int max)
@@ -20,11 +20,11 @@
        (if (> len max)
 	   (= max len)
 	   (copy)))
-     (if (> max 0) ; there was a line
+     (if (> max 0) // there was a line
 	 (printf "%s" longest))
      (return 0))
 
-; getline: specialized version
+// getline: specialized version
 (int _getline (void)
      (var int c i)
      (extern char ([] line))
@@ -38,7 +38,7 @@
      (= ([] line i) '\0)
      (return i))
 
-; copy: specialized version
+// copy: specialized version
 (void copy (void)
       (var int i)
       (extern char ([] line) ([] longest))

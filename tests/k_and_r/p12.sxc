@@ -1,7 +1,7 @@
 (#include <stdio.h>)
 
 // print Fhrenheit-Celsius table
-// for fahr = 0, 20, ..., 300; floating-point version
+// for fahr = 0, 20, ..., 300 floating-point version
 (int main ((int argc) (char (** argv)))
      (var float fahr celsius)
      (var int lower upper step)

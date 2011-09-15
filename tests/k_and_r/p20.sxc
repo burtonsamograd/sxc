@@ -1,9 +1,9 @@
 (#include <stdio.h>)
 
-(#define IN 1)	; inside a word
-(#define OUT 0)	; outside a word
+(#define IN 1)	// inside a word
+(#define OUT 0)	// outside a word
 
-;; count words, lines and characters in input
+// count words, lines and characters in input
 (int main ((int argc) (char (** argv)))
      (var int c nl nw nc state)
 

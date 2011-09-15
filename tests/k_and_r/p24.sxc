@@ -2,7 +2,7 @@
 
 (int power ((int m) (int n)))
 
-; test power function
+// test power function
 (int main ()
      (var int i)
 
@@ -11,7 +11,7 @@
 
      (return 0))
 
-; power: raise base to the n-th power; n >= 0
+// power: raise base to the n-th power; n >= 0
 (int power ((int base) (int n))
      (var int i p)
 

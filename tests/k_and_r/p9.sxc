@@ -1,7 +1,7 @@
 (#include <stdio.h>)
 
-; print Fahrenheit-Celcius trable
-; for fahr = 0, 20, ..., 300
+// print Fahrenheit-Celcius trable
+// for fahr = 0, 20, ..., 300
 (int main ((int argc) (char (** argv)))
      (var int fahr celsius)
      (var int lower upper step)

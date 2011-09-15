@@ -8,7 +8,7 @@
      
      (if 1
 	 (goto after_loop)
-     (else (if 0 ; should indent this way, TODO: figure out how to do this in emacs (indent back to if level)
+     (else (if 0 // should indent this way, TODO: figure out how to do this in emacs (indent back to if level)
 	       (goto before_loop))))
      
      (while 1

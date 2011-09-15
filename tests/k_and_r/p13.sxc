@@ -1,6 +1,6 @@
 (#include <stdio.h>)
 
-; print Fahrenheit-Celcius table
+// print Fahrenheit-Celcius table
 (int main ((int argc) (char (** argv)))
      (var int fahr)
      (for (= fahr 0) (<= fahr 200) (= fahr (+ fahr 20))

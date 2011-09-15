@@ -1,8 +1,8 @@
 (#include <stdio.h>)
 
-(#define LOWER 0)	; lower limit of table
-(#define UPPER 200)	; upper limit
-(#define STEP 20)	; step size
+(#define LOWER 0)	// lower limit of table
+(#define UPPER 200)	// upper limit
+(#define STEP 20)	// step size
 
 (int main ((int argc) (char (** argv)))
      (var int fahr)

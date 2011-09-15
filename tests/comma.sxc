@@ -1,14 +1,14 @@
 (#include <stdio.h>)
 (#include <string.h>)
 (#include <stdlib.h>)
-; from p63 of K&R
+// from p63 of K&R
 
 (int main ()
      (var int c i j)
      (var char (= (* string) "testing"))
      (var char (= (* s) (malloc (strlen string))))
      (strcpy s string)
-     ; reverse the string s
+     // reverse the string s
      (for (, (= i 0) (= j (- (strlen s) 1))) (< i j) (, (i ++) (j --))
 	  (= c (, ([] s i) (= ([] s i) ([] s j)) (= ([] s j) c))))
      (printf "%s\n" s)
