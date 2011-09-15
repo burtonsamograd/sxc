@@ -1,0 +1,10 @@
+(#include <stdio.h>)
+
+(int main ((int argc) (char (** argv)))
+     (var int (= x 10))
+     ({}
+      (var int (= x 20))
+      (printf "x: %d\n" x))
+     (printf "x: %d\n" x)
+     (return 0))
+     

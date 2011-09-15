@@ -536,6 +536,13 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 			  (format s "[")
 			  (output-c-helper (third form) filename s)
 			  (format s "])"))))
+		   ({} ; block scoping
+		    (format s "{~%")
+		    (mapcar (lambda (form)
+			      (output-c-helper form filename s)
+			      (format s ";~%"))
+			    (rest form))
+		    (format s "~%}~%"))
 		   (|if| ; if statement
 		    (c-output-if form filename s))
 		   (|switch| ; switch statement
