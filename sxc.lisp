@@ -382,8 +382,9 @@ while
        (mapcar (lambda (arg)
 		 (incf cur-arg)
 		 (if (and (listp arg)
-			  (eq (cadr arg) '|,|))
-		     (if (= cur-arg n-args) ; special case for comma operator, no parens around rhs
+			  (or (eq (cadr arg) '|,|)
+			      (eq (cadr arg) '|{,}|)))
+		     (if (= cur-arg n-args) ; special case for comma and {,} operator, no parens around rhs
 			 (output-c-helper arg filename s)
 			 (progn
 			   (output-c-helper arg filename s)
@@ -458,6 +459,51 @@ while
 		  (format s ";~%"))))
 	  (cdr form)))
 		      
+(def t c-output-block-scope ((t form) (simple-string filename) (stream s))
+  (format s "{~%")
+  (mapcar (lambda (form)
+	    (output-c-helper form filename s)
+	    (format s ";~%"))
+	  (rest form))
+  (format s "~%}"))
+
+(def t c-output-cast ((t form) (simple-string filename) (stream s))
+  (format s "((")
+  (output-c-helper (second form) filename s)
+  (format s ")")
+  (output-c-helper (third form) filename s)
+  (format s ") "))
+
+(def t c-output-array-reference ((t form) (simple-string filename) (stream s))
+  (if (= (length form) 2)
+      (progn
+	(output-c-helper (second form) filename s)
+	(format s "[]" ))
+      (progn
+	(format s "(")
+	(output-c-helper (second form) filename s)
+	(format s "[")
+	(output-c-helper (third form) filename s)
+	(format s "])"))))
+
+(def t c-output-character ((t form) (simple-string filename) (stream s))
+  (if (eq '|space| (second form))
+      (format s "' '" )
+      (format s "'~A'" (second form))))
+
+(def t c-output-bracketed-initialization ((t form) (simple-string filename) (stream s))
+  (format s "{ ")
+  (vars ((fixnum narg (length (rest form)))
+	 (fixnum curarg 0))
+    (mapcar (lambda (form)
+	      (incf curarg)
+	      (output-c-helper form filename s)
+	      (if (= curarg narg)
+		  (format s " ")
+		  (format s ", ")))
+	  (rest form)))
+  (format s " }"))
+
 (def t output-c-type-helper ((t form) (simple-string filename) (stream s))
   "called by above functions when we are expecting a type decleration.
 These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
@@ -526,23 +572,11 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		   (|,| ; comma operator
 		    (c-output-comma form filename s))
 		   (|[]| ; array reference
-		    (if (= (length form) 2)
-			(progn
-			  (output-c-helper (second form) filename s)
-			  (format s "[]" ))
-			(progn
-			  (format s "(")
-			  (output-c-helper (second form) filename s)
-			  (format s "[")
-			  (output-c-helper (third form) filename s)
-			  (format s "])"))))
+		    (c-output-array-reference form filename s))
 		   ({} ; block scoping
-		    (format s "{~%")
-		    (mapcar (lambda (form)
-			      (output-c-helper form filename s)
-			      (format s ";~%"))
-			    (rest form))
-		    (format s "~%}"))
+		    (c-output-block-scope form filename s))
+		   (|{,}| ; bracketed inititalization
+		    (c-output-bracketed-initialization form filename s))
 		   (|if| ; if statement
 		    (c-output-if form filename s))
 		   (|switch| ; switch statement
@@ -554,11 +588,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		   (|for| ; for statement
 		    (c-output-for form filename s))
 		   (|cast| ; special case of cast funcall operator (cast type var)
-		    (format s "((")
-		    (output-c-helper (second form) filename s)
-		    (format s ")")
-		    (output-c-helper (third form) filename s)
-		    (format s ") "))
+		    (c-output-cast form filename s))
 		   ((|var| |auto| |static| |extern|) ; variable decleration
 		    (c-output-variable-decleration form filename s))
 		   (|goto| ; goto statement
@@ -569,10 +599,8 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (format s "(*~A++)" (second form) filename s))
 		   (*?-- ; hack function for performing *ptr--
 		    (format s "(*~A--)" (second form) filename s))
-		   ('quote ; characters are single quoted, using double backslashes when required
-		    (if (eq '|space| (second form))
-			(format s "' '" )
-			(format s "'~A'" (second form))))
+		   ('quote ; characters are single quoted
+		    (c-output-character form filename s))
 		   (otherwise ; function call
 		    (c-output-function-call form filename s)))))
 	     (typecase form
