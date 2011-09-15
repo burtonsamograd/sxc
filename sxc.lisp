@@ -578,7 +578,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 
 (def t output-c ((list form) (simple-string filename) &optional (stream s *standard-input*))
   (case (cadr form)
-    ((|#include| |#define|)
+    ((|#include| |#define| |#if| |#ifdef| |#else| |#endif|)
      (progn
        (setf form (strip-lineno form filename s))
        (format s "~A " (car form))
