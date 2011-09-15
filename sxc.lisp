@@ -570,10 +570,9 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (c-output-function-call form filename s)))))
 	     (typecase form
 	       (string (format s "\"~A\"" form))
-	       (fixnum (format s "~A " form))
-	       (float (format s "~A " form))
-	       (character (format s "'~A'" form))
-	       (symbol (format s "~A " form)))))
+	       (symbol (format s "~A " form))
+	       (otherwise
+		(error "sxc: found type other than string or symbol in code stream: '~A'" form)))))
 
 
 (def t output-c ((list form) (simple-string filename) &optional (stream s *standard-input*))
