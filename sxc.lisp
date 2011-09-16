@@ -602,7 +602,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (c-output-for form filename s))
 		   (|cast| ; special case of cast funcall operator (cast type var)
 		    (c-output-cast form filename s))
-		   ((|var| |auto| |static| |extern|) ; variable decleration
+		   ((|var| |auto| |static| |extern| |register|) ; variable decleration
 		    (c-output-variable-decleration form filename s))
 		   (|goto| ; goto statement
 		    (format s "goto ~A" (second form) filename s))
@@ -647,7 +647,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
        (format s "~%")))
     (|#define|
      (output-c-helper form filename s))
-    ((|var| |static| |extern|)
+    ((|var| |auto| |static| |extern| |register|)
      (output-c-helper form filename s)
      (format s ";~%"))
 ;     (format s "~A;~%" (output-c-helper form filename s)))
