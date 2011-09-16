@@ -614,6 +614,21 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (format s "(*~A--)" (second form) filename s))
 		   ('quote ; characters are single quoted
 		    (c-output-character form filename s))
+		   ('? ; short form conditional
+		    (destructuring-bind (op condition true-form false-form) form
+		      (format s "(")
+		      (output-c-helper condition filename s)
+		      (format s " ? ")
+		      (output-c-helper true-form filename s)
+		      (format s " : ")
+		      (output-c-helper false-form filename s)
+		      (format s ")")))
+		   (|#define|
+		    (format s "#define ")
+		    (mapcar (lambda (form)
+			      (output-c-helper form filename s))
+			    (rest form))
+		    (format s "~%"))
 		   (otherwise ; function call
 		    (c-output-function-call form filename s)))))
 	     (typecase form
@@ -624,12 +639,14 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 
 (def t output-c ((list form) (simple-string filename) &optional (stream s *standard-input*))
   (case (cadr form)
-    ((|#include| |#define| |#if| |#ifdef| |#else| |#endif|)
+    ((|#include| |#if| |#ifdef| |#else| |#endif|)
      (progn
        (setf form (strip-lineno form filename s))
        (format s "~A " (car form))
        (mapcar (lambda (x) (format s "~A " x)) (cdr form))
        (format s "~%")))
+    (|#define|
+     (output-c-helper form filename s))
     ((|var| |static| |extern|)
      (output-c-helper form filename s)
      (format s ";~%"))
@@ -658,11 +675,16 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 				     (if body
 					 (progn
 					   (output-c-type-helper (first vardecl) filename s)
-					   (output-c-helper (second vardecl) filename s)
+					   (when (= (length vardecl) 2)
+					     (output-c-helper (second vardecl) filename s))
 					   (format s ") {~%"))
 					 (progn
-					   (output-c-type-helper (first vardecl) filename s)
-					   (output-c-helper (second vardecl) filename s)
+					   (if (eq (car vardecl) '[]) ; special case for (int getop (([] char)))
+					       (output-c-type-helper vardecl filename s)
+					       (progn
+						 (output-c-type-helper (first vardecl) filename s)
+						 (when (= (length vardecl) 2)
+						   (output-c-helper (second vardecl) filename s))))
 					   (format s ")~%"))))
 				   (if body
 				       (progn
