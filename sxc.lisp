@@ -4,13 +4,22 @@
 ;  (:use :cl :sb-ext))
 ;(in-package :sxc)
 
-
 (load "typed-cl.lisp")
 
 (defmacro while (condition &body body)
   `(do ()
        ((not ,condition))
      ,@body))
+
+(defmacro emit-warning (filename lineno format-string &rest format-args)
+  `(format *error-output* ,(concatenate 'string
+					"~A: ~A: warning: "
+					format-string) ,filename ,lineno ,@format-args))
+
+(defmacro emit-error (filename lineno format-string &rest format-args)
+  `(format *error-output* ,(concatenate 'string
+					"~A: ~A: error: "
+					format-string) ,filename ,lineno ,@format-args))
 
 (def t remove-tree ((t value) (t tree))
      "like remove but works on a tree"
@@ -47,7 +56,8 @@ after reading:
   (with-open-file (s filename)
      (vars ((fixnum curline 1)
 	    (symbol nil-form (gensym))
-	    (symbol comment-form (gensym)))
+	    (symbol comment-form (gensym))
+	    ((list-of fixnum) reading-form-lines ()))
        (ldef ((character getc ()
 			 (vars ((character c (read-char s t)))
 			   (when (char= c #\Newline)
@@ -115,48 +125,51 @@ after reading:
 			   (setf c (getc)))))
 	      ((or list symbol string) read-form ()
 		 ; read a form, returning list, symbol or string
-		 (skip-whitespace)
-		 (vars ((character c (getc))
-			(fixnum lineno curline))
-		   (case c
-		     (#\(
-		      (skip-whitespace)
-		      (if (char= (peekc) #\))
-			  (progn
-			    (getc)
-			    nil-form)
-			  (progn
-			    (vars ((list result nil)
-				   (t form nil))
-			      (loop
-				 (setf form (read-form))
-				 (if form
-				     (push form result)
-				     (return-from read-form `(,lineno .  ,(subst nil nil-form (nreverse result))))))))))
-		     (#\) nil)
-		     (#\'
-		      (vars ((character c2 (peekc)))
-			     (if (eq c2 #\ )
-				 `(,lineno . (quote | |))
-				 `(,lineno . (quote ,(read-symbol (getc)))))))
-		     (#\" (read-string s))
-		     (#\/ ; start of comment possibly
-		      (vars ((character c2 (peekc)))
-			(case c2
-			  (#\* (getc) (skip-comment))
-			  (#\/ (skip-line-comment))
-			  (otherwise ; not comment, read symbol
-			   (read-symbol c)))))
-		     ;(#\/ (read-comment s)
-		     (otherwise
-		      (read-symbol c))))))
+	       (skip-whitespace)
+	       (vars ((character c (getc))
+		      (fixnum lineno curline))
+		 (case c
+		   (#\(
+		    (skip-whitespace)
+		    (push lineno reading-form-lines)
+		    (if (char= (peekc) #\))
+			(progn
+			  (getc)
+			  (pop reading-form-lines)
+			  nil-form)
+			(progn
+			  (vars ((list result nil)
+				 (t form nil))
+			    (loop
+			       (setf form (read-form))
+			       (if form
+				   (push form result)
+				   (return-from read-form `(,lineno .  ,(subst nil nil-form (nreverse result))))))))))
+		   (#\) (pop reading-form-lines) nil)
+		   (#\'
+		    (vars ((character c2 (peekc)))
+		      (if (eq c2 #\ )
+			  `(,lineno . (quote | |))
+			  `(,lineno . (quote ,(read-symbol (getc)))))))
+		   (#\" (read-string s))
+		   (#\/ ; start of comment possibly
+		    (vars ((character c2 (peekc)))
+		      (case c2
+			(#\* (getc) (skip-comment))
+			(#\/ (skip-line-comment))
+			(otherwise ; not comment, read symbol
+			 (read-symbol c)))))
+		   (otherwise
+		    (read-symbol c))))))
 	 (vars ((list retval nil))
 	   (handler-case 
 	       (loop
 		  (vars (((or list symbol) form (read-form)))
 		    (push (if (eq form nil-form) nil form) retval)))
 	     (end-of-file (e)
-	       (remove-tree comment-form (nreverse retval)))))))))
+	       (if reading-form-lines
+		   (emit-error filename (car reading-form-lines) "end of file when reading form.~%")
+		   (remove-tree comment-form (nreverse retval))))))))))
 
 ;(format t "~A~%" (sxc-read-file "test.sxc"))
 
@@ -609,7 +622,6 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 	       (otherwise
 		(error "sxc: found type other than string or symbol in code stream: '~A'" form)))))
 
-
 (def t output-c ((list form) (simple-string filename) &optional (stream s *standard-input*))
   (case (cadr form)
     ((|#include| |#define| |#if| |#ifdef| |#else| |#endif|)
@@ -639,15 +651,19 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 			   (incf curvardecl)
 			   (if (= curvardecl numvardecl)
 			       (if (listp vardecl)
-				   (if body
-				       (progn
-					 (output-c-type-helper (first vardecl) filename s)
-					 (output-c-helper (second vardecl) filename s)
-					 (format s ") {~%"))
-				       (progn
-					 (output-c-type-helper (first vardecl) filename s)
-					 (output-c-helper (second vardecl) filename s)
-				       (format s ")~%")))
+				   (progn
+				     (when (> (length vardecl) 2)
+				       (emit-warning filename current-line
+						     "function argument decleration with more than 2 elements~%"))
+				     (if body
+					 (progn
+					   (output-c-type-helper (first vardecl) filename s)
+					   (output-c-helper (second vardecl) filename s)
+					   (format s ") {~%"))
+					 (progn
+					   (output-c-type-helper (first vardecl) filename s)
+					   (output-c-helper (second vardecl) filename s)
+					   (format s ")~%"))))
 				   (if body
 				       (progn
 					 (output-c-helper vardecl filename s)
