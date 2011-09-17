@@ -1,11 +1,12 @@
 for i in $(find tests -name '*.sxc' | sort -n); do
     echo -n $i...
-    { ./sxc.sh $i > x.c &&
-	gcc -Wall x.c &&
+    { ./sxcc.sh -Wall $i &&
 	{ [ -f $i.in ] &&
 	    { ./a.out < $i.in | cmp $i.out - ; } ||
 	    { ./a.out | cmp $i.out - ; }
 	} &&
 	echo "passed!"
-    } || { echo -e "\n*** Compilation results of $i\n\n" && ./sxc.sh $i ; break ; }
+    } || { echo -e "\n*** failed: Compilation results of $i\n\n" && ./sxc.sh $i ; break ; }
 done
+
+rm a.out
