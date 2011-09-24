@@ -495,9 +495,12 @@ while
       (progn
 	(format s "(")
 	(output-c-helper (second form) filename s)
-	(format s "[")
-	(output-c-helper (third form) filename s)
-	(format s "])"))))
+	(mapcar (lambda (form)
+		  (format s "[")
+		  (output-c-helper form filename s)
+		  (format s "]"))
+		(cddr form))
+	(format s ")"))))
 
 (def t c-output-character ((t form) (simple-string filename) (stream s))
   (if (eq '|space| (second form))
@@ -526,15 +529,18 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 	 (output-c-type-helper (second form) filename s)
 	 (format s "~A" (first form)))
 	([] ; there was a problem with declerations being surrounded by () so this needs to be handled specially
-	 (if (= (length form) 3)
+	 (if (>= (length form) 3)
 	     (progn
-	       (format s "~A["
+	       (format s "~A"
 		       (let ((string-output-stream (make-string-output-stream)))
 			 (remove #\( (remove #\)
 					     (progn (output-c-helper (second form) filename string-output-stream)
 						    (get-output-stream-string string-output-stream))))))
-	       (output-c-helper (third form) filename s)
-	       (format s "]"))
+	       (mapcar (lambda (form)
+			 (format s "[")
+			 (output-c-helper form filename s)
+			 (format s "]"))
+		       (cddr form)))
 	     (format s "~A[]"
 		     (let ((string-output-stream (make-string-output-stream)))
 		       (remove #\( (remove #\)
