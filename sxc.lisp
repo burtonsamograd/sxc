@@ -580,8 +580,15 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (output-c-helper (second form) filename s)
 		    (format s "~A" (first form))
 		    (output-c-helper (third form) filename s))
-		   ((+ - * / % ^ ~ == < > <= >= != && |\|\|| |\|| |&| ** *** ****) ; infix + special operators
+		   ((+ - * / % ^ ~ == < > <= >= != && |\|\|| |\|| ** *** ****) ; infix + special operators
 		    (c-output-infix-operator form filename s))
+		   (|&| ; and or address of operator
+		    (if (= (length (rest form)) 1)
+			(progn
+			  (format s "(&(")
+			  (output-c-helper (second form) filename s)
+			  (format s "))"))
+			(c-output-infix-operator form filename s)))
 		   (|,| ; comma operator
 		    (c-output-comma form filename s))
 		   (|[]| ; array reference
