@@ -621,6 +621,9 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (format s "(*~A--)" (second form) filename s))
 		   ('quote ; characters are single quoted
 		    (c-output-character form filename s))
+		   (|unsigned| ; special case for unsigned int/char/short/long
+		    (format s "unsigned ")
+		    (output-c-type-helper (cadr form) filename s))
 		   ('? ; short form conditional
 		    (destructuring-bind (op condition true-form false-form) form
 		      (format s "(")
