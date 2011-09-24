@@ -10,7 +10,12 @@ verbose () {
 }
 	
 print_help() {
-    echo "help"
+    echo "sxcc.sh: compile and pass files to CC"
+    echo "Options:"
+    echo
+    echo "--keep-temp-file: do not delete temporary C files after compilation with sxc"
+    echo "--verbose: print some internal information about sxcc.sh"
+    echo "--help: this message"
 }
 
 args=""
