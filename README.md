@@ -112,6 +112,10 @@ but works with strings as arguments:
 Syntax
 ------
 
+SEE ./tests/ FOR MORE SYNTAX EXAMPLES.
+
+--
+
 The basic syntax of sxc follows that of the Lisp family of languages.
 
 The first argument to an s-expression is the function or keyword to be
