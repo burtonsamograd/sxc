@@ -26,6 +26,24 @@ Features
     - macros
     - source line gdb debugging of original sources
 
+
+Building
+--------
+
+Install sbcl from http://sbcl.org.
+
+Type make.  Output will be in ./sxc.
+
+Running
+-------
+
+Use the wrapper scripts ./sxc.sh and ./sxcc.sh to compile and build an
+executable from one or more .sxc files:
+
+	   ./sxcc.sh main.sxc lib.sxc
+
+The result goes into ./a.out.
+
 Examples
 --------
 
