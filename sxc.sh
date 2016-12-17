@@ -1,1 +1,1 @@
-./sxc.lisp $1 | indent
+./sxc $1 | indent

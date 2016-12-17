@@ -1,3 +1,5 @@
+#!/bin/bash
+
 for i in $(find tests -name '*.sxc' | sort -n); do
     echo -n $i...
     { ./sxcc.sh -Wall $i &&
