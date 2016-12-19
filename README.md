@@ -24,7 +24,7 @@ Features
 
     - transpilation from .sxc to .c sources
     - macros
-    - source line gdb debugging of original sources
+    - source line gdb debugging of original sources (currently broken)
 
 
 Building
