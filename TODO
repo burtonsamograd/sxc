@@ -1,3 +1,11 @@
--- add (struct name
-       	       type1 field
-	       type2 field ...)
+DONE -- add (struct name
+     	  	    type1 field
+		    type2 field ...)
+
+-- Allow for nested struct definitions
+   (struct point
+   	   int x
+	   int y
+	   (struct data
+	   	   int a
+		   int b) d)

@@ -554,6 +554,22 @@ while
 	  (rest form)))
   (format s " }"))
 
+(defun pair (l &optional a)
+  (if l
+      (pair (cddr l) (cons `(,(car l) . ,(cadr l)) a))
+    (nreverse a)))
+
+(def t c-output-struct ((list form) (simple-string filename) (stream s))
+     (destructuring-bind (struct-form name &rest fields) form
+       (declare (ignore struct-form))
+       (format s "struct ~A {" name)
+       (let ((pairs (pair fields)))
+	 (dolist (pair pairs)
+	   (output-c-type-helper (car pair) filename s)
+	   (output-c-helper (cdr pair) filename s)
+	   (format s "; ")))
+       (format s "}")))
+     
 (def t output-c-type-helper ((t form) (simple-string filename) (stream s))
   "called by above functions when we are expecting a type decleration.
 These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
@@ -608,6 +624,8 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		   (output-c-helper (car form) filename s)
 		   (output-c-helper (second form) filename s))
 		 (case (car form) ; keyword, operator or function (or macro)
+		   (|struct|
+		    (c-output-struct form filename s))
 		   (=
 		    (c-output-equals form filename s))
 		   ((+= -= *= /= ^= ~= ==)
@@ -694,7 +712,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
        (format s "~%")))
     (|#define|
      (output-c-helper form filename s))
-    ((|var| |auto| |static| |extern| |register|)
+    ((|var| |auto| |static| |extern| |register| |struct|)
      (output-c-helper form filename s)
      (format s ";~%"))
 ;     (format s "~A;~%" (output-c-helper form filename s)))
