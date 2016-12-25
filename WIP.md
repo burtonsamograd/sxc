@@ -45,10 +45,17 @@ little syntax, for convenience, like ''' and '`' and ','.  At read
 time, the syntax is transformed away and replaced by internal
 identifiers, like so:
 
+```lisp
     'x => (quote x)
     `(+ ,x ,@y) => (quasiquote (+ (unquote x) (unquote-splice x)))
+```
 
 By the time the S-Expression has been READ by the reader, the syntax
 has mostly been stripped. The problem...
 
 We need to jack the reader.
+
+I'll explain more later.
+
+--
+Dec 25, 2017
