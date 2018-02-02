@@ -1,0 +1,109 @@
+(#include <stdio.h>)
+(#include <string.h>)
+(#include <stdlib.h>)
+
+/*
+
+djb2
+
+this algorithm (k=33) was first reported by dan bernstein many years
+ago in comp.lang.c. another version of this algorithm (now favored by
+                                                           bernstein) uses xor: hash(i) = hash(i - 1) * 33 ^ str[i]
+
+the magic of
+number 33 (why it works better than many other constants, prime or
+               not) has never been adequately explained.
+
+*/
+
+(int djb2 (((unsigned char) (* s)) (int a) (int b))
+     (var (unsigned long) (= hash a))
+     (var int c)
+
+     (while (= c (*?++ s))
+       (= hash (+ (* hash b) c)))
+
+     (return hash))
+
+/*
+void swap(int *xp, int *yp)
+{
+    int temp = *xp;
+    *xp = *yp;
+    *yp = temp;
+}
+ 
+// A function to implement bubble sort
+void bubbleSort(int arr[], int n)
+{
+   int i, j;
+   for (i = 0; i < n-1; i++)      
+ 
+       // Last i elements are already in place   
+       for (j = 0; j < n-i-1; j++) 
+           if (arr[j] > arr[j+1])
+              swap(&arr[j], &arr[j+1]);
+}
+*/
+
+(void swap (((unsigned long) (* a)) ((unsigned long) (* b)))
+      (var (unsigned long) (= tmp (* a)))
+      (= (* a) (* b))
+      (= (* b) tmp))
+
+(void sort (((unsigned long) (* a)) (int n))
+      (var int i)
+      (var int j)
+      (for (= i 0) (< i (- n 1)) (++ i)
+        (if (> ([] a j) ([] a (+ j 1)))
+            (swap (& ([] a j)) (& ([] a (+ j 1)))))))
+
+(void debug ((char (* message)))
+      (puts message)
+      (fflush stdout))
+
+(int main ((int argc) (char (** argv)))
+     (var (* FILE) file)
+     (var char ([] word 128))
+     (var (* char) ([] words 354985))
+     (var (unsigned long) ([] hashes 354985))
+     (var (unsigned long) ([] counts 354985))
+     (var int (= nwords 0))
+     (var int (= nhashes 0))
+     (puts "x")
+     (fflush stdout)
+
+     (debug "hash collision detector")
+
+     (= file (fopen "./words.txt" "r"))
+
+     (debug "reading words...")
+     (while (> (fscanf file "%s\n" word) 0)
+       (= ([] hashes nwords) 0)
+       (= ([] counts nwords) 0)
+       (= ([] words (nwords ++)) (strdup word)))
+       
+     (var int i b)
+     (for (= b 0) (< b 256) (b ++)
+       (= nhashes 0)
+       (debug "clearing hashes")
+       (memset hashes 0 (sizeof hashes))
+       (memset counts 0 (sizeof counts))
+
+       (for (= i 0) (< i nwords) (i ++)
+         (var (unsigned long) hash)
+         (= hash (djb2 (cast (* (unsigned char)) ([] words i)) 5381 b))
+         (= ([] hashes (nhashes ++)) hash))
+
+       (debug "sorting hashes")
+       (sort hashes nhashes)
+
+       (var int (= total 1))
+
+       (debug "something")
+       (for (= i 0) (< i nhashes) (i ++)
+         (if (== ([] hashes i) ([] hashes (+ i 1)))
+             continue)
+         (total ++))
+
+       (printf "b: %d collisions: %d\n" b (- 354985 total))))
