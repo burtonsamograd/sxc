@@ -374,10 +374,10 @@ after reading:
   (when (consp form)
     (vars ((fixnum curline (car form)))
       (when (not (= curline current-line))
-	(setf current-line (car form))))
+	(setf current-line (car form))
+	#+()(format s "~%#line ~A \"~A\"~%" current-line filename)))
     ;; FIXME:  for some reason this is causing problems, uncomment to see what it is.
     ;;         the newline isn't being printed at the end of all lines!  causes compilation errors
-    (format s "#line ~A \"~A\"~%" current-line filename)
     (return-from strip-lineno (cdr form)))
   form)
      
@@ -611,7 +611,9 @@ while
 		 (if (and (listp arg)
 			  (or (eq (cadr arg) '|,|)
 			      (eq (cadr arg) '|{,}|)))
-		     (if (= cur-arg n-args) ; special case for comma and {,} operator, no parens around rhs
+		     (if (= cur-arg n-args) ; special case for comma
+					    ; and {,} operator, no
+					    ; parens around rhs
 			 (output-c-helper arg filename s)
 			 (progn
 			   (output-c-helper arg filename s)
