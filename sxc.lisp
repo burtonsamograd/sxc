@@ -377,7 +377,7 @@ after reading:
 	(setf current-line (car form))))
     ;; FIXME:  for some reason this is causing problems, uncomment to see what it is.
     ;;         the newline isn't being printed at the end of all lines!  causes compilation errors
-    ;;(format s "#line ~A \"~A\"~%" current-line filename)))
+    (format s "#line ~A \"~A\"~%" current-line filename)
     (return-from strip-lineno (cdr form)))
   form)
      

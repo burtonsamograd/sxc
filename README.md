@@ -23,9 +23,7 @@ Features
 --------
 
     - transpilation from .sxc to .c sources
-    - macros
-    - source line gdb debugging of original sources (currently broken)
-
+    - source line gdb debugging of original sources
 
 Building
 --------
@@ -40,18 +38,20 @@ Running
 Use the wrapper scripts ./sxc.sh and ./sxcc.sh to compile and build an
 executable from one or more .sxc files:
 
-	   ./sxcc.sh main.sxc lib.sxc
+	   sxcc main.sxc lib.sxc
 
 The result goes into ./a.out.
+
+All options to  sxcc are passed to the compiler other than file names.
 
 Examples
 --------
 
 The following is a basic "Hello World" program:
 
-    ;;
-    ;; hello.sxc
-    ;;
+    //
+    // hello.sxc
+    //
     
     (#include <stdio.h>)
     
@@ -64,15 +64,18 @@ This can be compiled and run using the following:
 
     sxcc -o hello hello.sxc && ./hello
 
+Future Work - Macros
+--------------------
+
 A more complex example is adding a new control structure to the
 language, like a 'string switch', which is like a standard C switch
 but works with strings as arguments:
 
-    ;;
-    ;; sswitch - string switch
-    ;;
-    ;; a switch statement that works with strings
-    ;;
+    //
+    // sswitch - string switch
+    //
+    // a switch statement that works with strings
+    //
     (macro sswitch (val &body cases)
            (labels ((genswitch (cases)
     		  (let* ((case (car cases))
@@ -132,7 +135,7 @@ There are a some exceptions for convenience:
 Utilities
 ---------
 
-A wrapper script 'sxcc' is provided to simplify building and
+A wrapper script 'sxcc.sh' is provided to simplify building and
 compilation of program sources into an executable.
 
 --
