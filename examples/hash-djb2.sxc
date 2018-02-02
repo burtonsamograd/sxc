@@ -1,18 +1,29 @@
+/* -*- mode: lisp -*-
+ * 
+ * hash-djb2.sxc
+ *
+ * This example is meant to test Bernstein's hash algorithm
+ * djb2 for collisions using values of k != 33.
+ *
+ * Burton Samograd
+ * 2018
+ */
+
 (#include <stdio.h>)
 (#include <string.h>)
 (#include <stdlib.h>)
-
 /*
 
-djb2
+djb2 - Dan Bernstein's Hash Function
 
 this algorithm (k=33) was first reported by dan bernstein many years
 ago in comp.lang.c. another version of this algorithm (now favored by
-                                                           bernstein) uses xor: hash(i) = hash(i - 1) * 33 ^ str[i]
+bernstein) uses xor:
 
-the magic of
-number 33 (why it works better than many other constants, prime or
-               not) has never been adequately explained.
+	   hash(i) = hash(i - 1) * 33 ^ str[i]
+
+the magic of number 33 (why it works better than many other constants,
+prime or not) has never been adequately explained.
 
 */
 
@@ -62,20 +73,25 @@ void bubbleSort(int arr[], int n)
       (puts message)
       (fflush stdout))
 
+      
 (int main ((int argc) (char (** argv)))
      (var (* FILE) file)
      (var char ([] word 128))
-     (var (* char) ([] words 354985))
-     (var (unsigned long) ([] hashes 354985))
-     (var (unsigned long) ([] counts 354985))
+     (var (unsigned long *)
+	  (= hashes  (malloc (* 354985 (sizeof (unsigned long))))))
+     (var (unsigned long *)
+	  (= counts (malloc (* 354985 (sizeof (unsigned long))))))
+     (var (char **)
+	  (= words (malloc (* 354985 (sizeof (char **))))))
      (var int (= nwords 0))
      (var int (= nhashes 0))
-     (puts "x")
-     (fflush stdout)
 
      (debug "hash collision detector")
 
      (= file (fopen "./words.txt" "r"))
+     (if (! file)
+	 (debug "error opening ./words.txt")
+       (exit 1))
 
      (debug "reading words...")
      (while (> (fscanf file "%s\n" word) 0)
@@ -86,21 +102,19 @@ void bubbleSort(int arr[], int n)
      (var int i b)
      (for (= b 0) (< b 256) (b ++)
        (= nhashes 0)
-       (debug "clearing hashes")
-       (memset hashes 0 (sizeof hashes))
-       (memset counts 0 (sizeof counts))
+       (memset hashes 0 (sizeof (* hashes)))
+       (memset counts 0 (sizeof (* counts)))
 
        (for (= i 0) (< i nwords) (i ++)
          (var (unsigned long) hash)
          (= hash (djb2 (cast (* (unsigned char)) ([] words i)) 5381 b))
          (= ([] hashes (nhashes ++)) hash))
 
-       (debug "sorting hashes")
+       (debug "; sorting hashes")  // it crashes if you remove this
        (sort hashes nhashes)
 
        (var int (= total 1))
 
-       (debug "something")
        (for (= i 0) (< i nhashes) (i ++)
          (if (== ([] hashes i) ([] hashes (+ i 1)))
              continue)

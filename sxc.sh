@@ -1,1 +1,1 @@
-./sxc $1 | indent
+${SEX-sxc} $1 | indent

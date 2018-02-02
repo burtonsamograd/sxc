@@ -3,3 +3,5 @@ x
 x.c
 *~
 *.o
+*.dSYM/
+sxc

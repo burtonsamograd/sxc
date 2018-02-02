@@ -1,3 +1,5 @@
+-- add (inline-c "int x = 0;")
+
 DONE -- add (struct name
      	  	    type1 field
 		    type2 field ...)

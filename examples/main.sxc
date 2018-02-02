@@ -1,6 +1,0 @@
-/* main.sxc */
-
-(#include <stdio.h>) // x
-
-(int main ((int argc) (char (** argv)))
-     (puts "hello, world!"))
