@@ -1,3 +1,4 @@
+#!/bin/bash
 
 sxc=${SXC-./sxc.sh}
 delete_temp_file=true
@@ -15,7 +16,7 @@ verbose () {
 	echo $*
     fi
 }
-	
+
 print_help() {
     echo "sxcc.sh: compile and pass files to CC"
     echo "Options:"
@@ -79,8 +80,3 @@ $cc_cmd
 if [[ $delete_temp_files == true ]]; then
     rm -f ${c_files[*]}
 fi
-
-
-
-
-    

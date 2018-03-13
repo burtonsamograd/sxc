@@ -8,3 +8,6 @@ fire: fire.sxc sxc
 
 test:
 	./run-tests.sh
+
+clean:
+	rm -f sxc
