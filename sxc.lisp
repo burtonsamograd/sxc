@@ -1,6 +1,6 @@
-;(defpackage :sxc
-;  (:use :cl :sb-ext))
-;(in-package :sxc)
+(defpackage :main
+  (:use cl)
+  (:export main))
 
 (load "typed-cl.lisp")
 
