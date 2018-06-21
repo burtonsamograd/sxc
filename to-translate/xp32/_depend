@@ -1,0 +1,19 @@
+camera.o: ./camera.c ./camera.h ./scalar.h ./matrix.h ./vector.h \
+  ./angle.h ./window.h
+fire.o: ./fire.c ./window.h ./screen.h ./random.h
+font.o: ./font.c ./screen.h ./font.h ./window.h ./fbanim.h
+goo.o: ./goo.c ./window.h ./screen.h ./random.h
+line.o: ./line.c ./window.h ./line.h
+list.o: ./list.c ./list.h
+matrix.o: ./matrix.c ./vector.h ./scalar.h ./matrix.h ./angle.h
+one.o: ./one.c ./seq.h ./goo.h ./window.h ./font.h ./fbanim.h ./screen.h
+random.o: ./random.c
+smoke.o: ./smoke.c ./screen.h ./window.h ./random.h
+terrain.o: ./terrain.c ./terrain.h ./random.h
+three.o: ./three.c ./fbanim.h ./screen.h ./window.h ./smoke.h ./font.h \
+  ./fire.h ./goo.h
+vector.o: ./vector.c ./vector.h ./scalar.h
+window.o: ./window.c ./window.h
+
+
+
