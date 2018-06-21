@@ -1,5 +1,3 @@
-Development: http://github.com/BusFactor1Inc/sxc
-
 EXAMPLE:
 
 $ ./sxcc.sh hello.sxc
