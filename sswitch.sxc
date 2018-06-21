@@ -1,7 +1,7 @@
-;; sswitch - string switch
-;;
-;; a switch statement that works with strings
-;;
+// sswitch - string switch
+//
+// a switch statement that works with strings
+//
 (macro sswitch (val &body cases)
        (labels ((genswitch (cases)
 		  (let* ((case (car cases))

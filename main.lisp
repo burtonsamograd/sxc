@@ -1,3 +1,10 @@
+// main.lisp: sxc
+//
+// sxc is a command line C-like s-expression to 'C' transpiler.
+//
+// Burton Samograd
+// 2018
+
 (defpackage :main
   (:use cl)
   (:export main))
