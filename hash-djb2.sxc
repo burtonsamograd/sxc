@@ -70,7 +70,7 @@ not) has never been adequately explained.
 
 	  (printf "b: %d collisions: %d\n" b (- 354985 total))))
 
-/********************************************************************************
+/*
 $ ./a.out | sort -rnk 4
 b: 0 collisions: 354953
 b: 1 collisions: 352788
@@ -329,4 +329,4 @@ b: 243 collisions: 10
 b: 83 collisions: 9
 b: 159 collisions: 7
 $ # the least number of collisions in 354985 english words is with the constant 159.
-********************************************************************************/
+*/

@@ -1,9 +1,9 @@
-// main.lisp: sxc
-//
-// sxc is a command line C-like s-expression to 'C' transpiler.
-//
-// Burton Samograd
-// 2018
+;; main.lisp: sxc
+;;
+;; sxc is a command line C-like s-expression to 'C' transpiler.
+;;
+;; Burton Samograd
+;; 2018
 
 (defpackage :main
   (:use cl)
@@ -202,7 +202,7 @@ after reading:
 	(setf current-line (car form))))
     ;; FIXME:  for some reason this is causing problems, uncomment to see what it is.
     ;;         the newline isn't being printed at the end of all lines!  causes compilation errors
-    ;;(format s "#line ~A \"~A\"~%" current-line filename)))
+    (format s "#line ~A \"~A\"~%" current-line filename)
     (return-from strip-lineno (cdr form)))
   form)
      
@@ -799,7 +799,8 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 				 (output-c form filename *standard-output*))
 			       forms)
 					;	(sxc-read-file filename)))
-		     (sb-int:simple-file-error (e)
+		     (;;sb-int:simple-file-error (e)
+		      error (e)
 					       (declare (ignore e))
 					       (format *error-output*
 						       "~A: error: file not found.~%"
