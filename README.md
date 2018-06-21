@@ -144,6 +144,11 @@ Utilities
 A wrapper script 'sxcc' is provided to simplify building and
 compilation of program sources into an executable.
 
+TODO:
+--
+
+You can find some things to translate in to SXC in the to-translate/ directory.
+
 --
 Burton Samograd
 kruhft@icloud.com
