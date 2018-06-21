@@ -1,0 +1,4 @@
+-- this isn't common lisp so we don't have to support backquoting and commas
+
+-- instead we could use shell script like expansion things maybe
+
