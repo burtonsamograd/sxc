@@ -1,0 +1,332 @@
+(#include <stdio.h>)
+(#include <stdlib.h>)
+(#include <string.h>)
+
+/*
+
+djb2
+
+this algorithm (k=33) was first reported by dan bernstein many years
+ago in comp.lang.c. another version of this algorithm (now favored by
+bernstein) uses xor: hash(i) = hash(i - 1) * 33 ^ str[i]
+
+the magic of
+number 33 (why it works better than many other constants, prime or
+not) has never been adequately explained.
+
+*/
+
+(int djb2 (((unsigned char) (* s)) (int a) (int b))
+ (var (unsigned long) (= hash a))
+ (var int c)
+
+ (while (= c (*?++ s))
+   (= hash (+ (* hash b) c)))
+
+ (return hash))
+
+(int sort ((int* pa) (int* pb))
+     (var int (= a *pa))
+     (var int (= b *pb))
+     (if (< a b)
+	 (return -1)
+       (else (if (> a b)
+		 (return 1)
+	       (else (return 0))))))
+	       
+(int main ((int argc) (char (** argv)))
+     (var (* FILE) (= file (fopen "words.txt" "r")))
+     (var char ([] word 128))
+     (var (* char) ([] words 354985))
+     (var (unsigned long) ([] hashes 354985))
+     (var (unsigned long) ([] counts 354985))
+     (var int (= nwords 0))
+     (var int (= nhashes 0))
+
+     (while (> (fscanf file "%s\n" word) 0)
+       (= ([] hashes nwords) 0)
+       (= ([] counts nwords) 0)
+       (= ([] words (nwords ++)) (strdup word)))
+       
+     (var int i b)
+     (for (= b 0) (< b 256) (b ++)
+	  (= nhashes 0)
+	  (memset hashes 0 (sizeof hashes))
+	  (memset counts 0 (sizeof counts))
+
+	  (for (= i 0) (< i nwords) (i ++)
+	       (var (unsigned long) hash)
+	       (= hash (djb2 (cast (* (unsigned char)) ([] words i)) 5381 b))
+	       (= ([] hashes (nhashes ++)) hash))
+
+	  (qsort hashes nhashes (sizeof ([] hashes 0)) sort)
+
+	  (var int (= total 1))
+
+	  (for (= i 0) (< i nhashes) (i ++)
+	       (if (== ([] hashes i) ([] hashes (+ i 1)))
+		   continue)
+	       (total ++))
+
+	  (printf "b: %d collisions: %d\n" b (- 354985 total))))
+
+/*
+$ ./a.out | sort -rnk 4
+b: 0 collisions: 354953
+b: 1 collisions: 352788
+b: 128 collisions: 290754
+b: 64 collisions: 253515
+b: 192 collisions: 253491
+b: 2 collisions: 236075
+b: 32 collisions: 186630
+b: 160 collisions: 186513
+b: 224 collisions: 186459
+b: 96 collisions: 186440
+b: 16 collisions: 115047
+b: 80 collisions: 114854
+b: 208 collisions: 114563
+b: 240 collisions: 113265
+b: 144 collisions: 113190
+b: 176 collisions: 113161
+b: 48 collisions: 112967
+b: 112 collisions: 112848
+b: 3 collisions: 102283
+b: 4 collisions: 54276
+b: 8 collisions: 44477
+b: 24 collisions: 36635
+b: 88 collisions: 35781
+b: 216 collisions: 35777
+b: 152 collisions: 35773
+b: 248 collisions: 35534
+b: 120 collisions: 35449
+b: 184 collisions: 35377
+b: 56 collisions: 35357
+b: 136 collisions: 35346
+b: 72 collisions: 35317
+b: 200 collisions: 35314
+b: 168 collisions: 35256
+b: 104 collisions: 35252
+b: 40 collisions: 35251
+b: 232 collisions: 35211
+b: 5 collisions: 28918
+b: 6 collisions: 17870
+b: 7 collisions: 12656
+b: 10 collisions: 6349
+b: 9 collisions: 5736
+b: 12 collisions: 4908
+b: 14 collisions: 3383
+b: 20 collisions: 3368
+b: 11 collisions: 3090
+b: 13 collisions: 2414
+b: 15 collisions: 1921
+b: 212 collisions: 1743
+b: 188 collisions: 1631
+b: 84 collisions: 1535
+b: 148 collisions: 1517
+b: 124 collisions: 1495
+b: 252 collisions: 1492
+b: 76 collisions: 1459
+b: 68 collisions: 1447
+b: 140 collisions: 1446
+b: 60 collisions: 1444
+b: 52 collisions: 1435
+b: 132 collisions: 1434
+b: 116 collisions: 1433
+b: 204 collisions: 1427
+b: 36 collisions: 1424
+b: 164 collisions: 1415
+b: 196 collisions: 1412
+b: 180 collisions: 1410
+b: 244 collisions: 1399
+b: 220 collisions: 1398
+b: 100 collisions: 1392
+b: 28 collisions: 1391
+b: 228 collisions: 1389
+b: 92 collisions: 1378
+b: 156 collisions: 1374
+b: 172 collisions: 1359
+b: 108 collisions: 1337
+b: 236 collisions: 1336
+b: 44 collisions: 1332
+b: 17 collisions: 1143
+b: 18 collisions: 977
+b: 19 collisions: 620
+b: 21 collisions: 303
+b: 22 collisions: 255
+b: 23 collisions: 145
+b: 31 collisions: 114
+b: 255 collisions: 108
+b: 62 collisions: 97
+b: 58 collisions: 67
+b: 25 collisions: 66
+b: 29 collisions: 64
+b: 66 collisions: 60
+b: 77 collisions: 59
+b: 33 collisions: 59
+b: 34 collisions: 58
+b: 73 collisions: 55
+b: 69 collisions: 49
+b: 26 collisions: 49
+b: 78 collisions: 45
+b: 63 collisions: 43
+b: 39 collisions: 43
+b: 218 collisions: 43
+b: 35 collisions: 41
+b: 75 collisions: 39
+b: 61 collisions: 39
+b: 70 collisions: 35
+b: 71 collisions: 31
+b: 59 collisions: 31
+b: 38 collisions: 31
+b: 178 collisions: 31
+b: 82 collisions: 30
+b: 130 collisions: 30
+b: 93 collisions: 29
+b: 41 collisions: 29
+b: 190 collisions: 29
+b: 106 collisions: 29
+b: 74 collisions: 28
+b: 65 collisions: 28
+b: 50 collisions: 28
+b: 170 collisions: 27
+b: 30 collisions: 26
+b: 27 collisions: 26
+b: 194 collisions: 26
+b: 127 collisions: 26
+b: 54 collisions: 25
+b: 226 collisions: 25
+b: 174 collisions: 25
+b: 154 collisions: 25
+b: 131 collisions: 25
+b: 202 collisions: 24
+b: 123 collisions: 24
+b: 49 collisions: 23
+b: 147 collisions: 23
+b: 57 collisions: 22
+b: 55 collisions: 22
+b: 251 collisions: 22
+b: 177 collisions: 22
+b: 137 collisions: 22
+b: 46 collisions: 21
+b: 238 collisions: 21
+b: 165 collisions: 21
+b: 162 collisions: 21
+b: 150 collisions: 21
+b: 139 collisions: 21
+b: 79 collisions: 20
+b: 246 collisions: 20
+b: 245 collisions: 20
+b: 235 collisions: 20
+b: 234 collisions: 20
+b: 222 collisions: 20
+b: 185 collisions: 20
+b: 171 collisions: 20
+b: 157 collisions: 20
+b: 141 collisions: 20
+b: 125 collisions: 20
+b: 122 collisions: 20
+b: 105 collisions: 20
+b: 86 collisions: 19
+b: 53 collisions: 19
+b: 51 collisions: 19
+b: 231 collisions: 19
+b: 230 collisions: 19
+b: 217 collisions: 19
+b: 214 collisions: 19
+b: 209 collisions: 19
+b: 166 collisions: 19
+b: 151 collisions: 19
+b: 126 collisions: 19
+b: 119 collisions: 19
+b: 113 collisions: 19
+b: 94 collisions: 18
+b: 42 collisions: 18
+b: 207 collisions: 18
+b: 153 collisions: 18
+b: 114 collisions: 18
+b: 102 collisions: 18
+b: 101 collisions: 18
+b: 97 collisions: 17
+b: 90 collisions: 17
+b: 87 collisions: 17
+b: 67 collisions: 17
+b: 254 collisions: 17
+b: 253 collisions: 17
+b: 247 collisions: 17
+b: 225 collisions: 17
+b: 210 collisions: 17
+b: 198 collisions: 17
+b: 195 collisions: 17
+b: 149 collisions: 17
+b: 146 collisions: 17
+b: 142 collisions: 17
+b: 135 collisions: 17
+b: 111 collisions: 17
+b: 95 collisions: 16
+b: 85 collisions: 16
+b: 81 collisions: 16
+b: 45 collisions: 16
+b: 237 collisions: 16
+b: 213 collisions: 16
+b: 206 collisions: 16
+b: 182 collisions: 16
+b: 175 collisions: 16
+b: 155 collisions: 16
+b: 143 collisions: 16
+b: 118 collisions: 16
+b: 250 collisions: 15
+b: 223 collisions: 15
+b: 203 collisions: 15
+b: 191 collisions: 15
+b: 167 collisions: 15
+b: 138 collisions: 15
+b: 134 collisions: 15
+b: 121 collisions: 15
+b: 110 collisions: 15
+b: 109 collisions: 15
+b: 99 collisions: 14
+b: 91 collisions: 14
+b: 43 collisions: 14
+b: 37 collisions: 14
+b: 215 collisions: 14
+b: 186 collisions: 14
+b: 183 collisions: 14
+b: 181 collisions: 14
+b: 163 collisions: 14
+b: 145 collisions: 14
+b: 107 collisions: 14
+b: 239 collisions: 13
+b: 229 collisions: 13
+b: 219 collisions: 13
+b: 211 collisions: 13
+b: 201 collisions: 13
+b: 199 collisions: 13
+b: 197 collisions: 13
+b: 187 collisions: 13
+b: 169 collisions: 13
+b: 158 collisions: 13
+b: 133 collisions: 13
+b: 129 collisions: 13
+b: 117 collisions: 13
+b: 115 collisions: 13
+b: 47 collisions: 12
+b: 242 collisions: 12
+b: 233 collisions: 12
+b: 227 collisions: 12
+b: 221 collisions: 12
+b: 205 collisions: 12
+b: 193 collisions: 12
+b: 189 collisions: 12
+b: 173 collisions: 12
+b: 103 collisions: 12
+b: 89 collisions: 11
+b: 249 collisions: 11
+b: 241 collisions: 11
+b: 179 collisions: 11
+b: 161 collisions: 11
+b: 98 collisions: 10
+b: 243 collisions: 10
+b: 83 collisions: 9
+b: 159 collisions: 7
+$ # the least number of collisions in 354985 english words is with the constant 159.
+*/
