@@ -1,8 +1,10 @@
 EXAMPLE:
 
-$ ./sxcc.sh hello.sxc
-$ ./a.out            
-Hello, World!
+    $ ./sxcc.sh hello.sxc
+    $ ./a.out            
+    Hello, World!
+    $ make fire # TODO: make fire come out
+    $ C-c # Control-C to get your terminal back
 
 sxc - S-Expression C
 --------------------
