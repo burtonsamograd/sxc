@@ -1,1 +1,2 @@
 sudo apt install indent
+sudo apt install freeglut3-dev

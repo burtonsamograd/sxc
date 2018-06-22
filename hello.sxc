@@ -1,9 +1,0 @@
-// hello.sxc - the first program
-//
-// Burton Samograd
-// 2018
-
-(#include <stdio.h>)
-(int main ((int argc) (char (** argv)))
-	(printf "Hello, World!\n"))
-
