@@ -5,11 +5,12 @@ sxc: main.lisp
 	# echo "(load \"main.lisp\")(system::save \"./sxc\")" | gcl # DFW
 	# echo "(load \"main.lisp\")(ext:saveinitmem \"./sxc.clisp\" :init-function #'sxc::main :executable t)" | clisp # DFW
 
-fire: fire.sxc sxc
-	./sxcc.sh fire.sxc -framework GLUT -framework OpenGL
+fire: examples/fire.sxc sxc
+	./sxc examples/fire.sxc > /tmp/fire.c && gcc -o /tmp/fire /tmp/fire.c -lGL -lglut && /tmp/fire
+	#	./sxcc.sh fire.sxc -framework GLUT -framework OpenGL
 
 test:
 	./run-tests.sh
 
 clean:
-	rm -f sxc && ./rd
+	rm -f sxc fire && ./rd
