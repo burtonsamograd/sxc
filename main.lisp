@@ -4,12 +4,53 @@
 ;;
 ;; Burton Samograd
 ;; 2018
+#| c language keywords
+
+auto
+break
+case
+char
+const
+continue
+default
+do
+double
+else
+enum
+extern
+float
+for
+goto
+if
+int
+long
+register
+return
+short
+signed
+sizeof
+static
+struct
+switch
+typedef
+union
+unsigned
+void
+volatile
+while 
+
+|#
 
 (defpackage :main
   (:use cl)
   (:export main))
 
 (load "typed-cl.lisp")
+
+(defparameter *macros* (make-hash-table :test #'equalp))
+
+(def (list-of symbol) expand-macro (((list-of symbol) body))
+     body)
 
 (declaim (ftype (function ((or list symbol string fixnum float) simple-string stream) t) output-c-helper))
 (declaim (ftype (function (t simple-string stream) t) output-c-type-helper))
@@ -701,8 +742,15 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 			      (output-c-helper form filename s))
 			    (rest form))
 		    (format s "~%"))
+		   (|macro|
+		    (print |in macro|)
+		    (eval `(defmacro ,(car form) ,(cadr form) 
+			     ,@(cddr form)))
+		    (setf (gethash (car form) *macros*) t))
 		   (otherwise ; function call
-		    (c-output-function-call form filename s)))))
+		    (if (gethash (car form) *macros*)
+			(output-c-helper (macroexpand-1 (cdr form)))
+		      (c-output-function-call form filename s))))))
 	     (typecase form
 	       (string (format s "\"~A\"" form))
 	       (symbol (format s "~A " form))
