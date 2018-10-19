@@ -9,7 +9,7 @@ EXAMPLE:
 sxc - S-Expression C
 --------------------
 
-sxc is an an s-expression based language source transpiler for C.  By
+sxc is an s-expression based language source transpiler for C.  By
 providing an S-expression based syntax, sxc will attempt to add 
 Lisp-like macro and code generation capabilities to the C language (WIP).
 
