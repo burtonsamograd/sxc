@@ -869,7 +869,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 (def t main ()
      (vars (((list-of string) files-to-process (cdr *posix-argv*)))
 	   (dolist (filename files-to-process)
-	     (format *error-output* "sxc: processing file: ~S~%" filename)
+	     ;;(format *error-output* "sxc: processing file: ~S~%" filename)
 	     (vars ((list forms (sxc-read-file filename)))
 		   ;;(print forms)
 		   (handler-case 
