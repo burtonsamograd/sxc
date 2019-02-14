@@ -1,0 +1,53 @@
+README for XP32 Graphics Demo  
+-----------------------------
+
+Description:
+
+	XP32 is an MSDOS/VGA based graphics demo.  Running time is about 2 
+	minutes.  Effects include gooey plasma-like thing, animated matte
+	transistions, 3D vertex rendering, crazy spinning thing, smoke and 
+	fire.
+
+Build Requirements:
+
+	Current Version of DJGPP GNU C compiler for MSDOS.
+	GNU make for MSDOS.
+
+	These packages are available for free download from ftp.gnu.org in
+	/pub/gnu, and oak.oakland.edu in /pub/djgpp (I think).
+
+Build Instructions:
+
+	Extract the source files from the archive (.tar.gz or .zip) into
+	an appropriate directory.
+
+	Type 'make' to build the program.
+
+Running Instructions:
+
+	To run this program, you require a program called go32.exe.  This
+	is a free DOS extender that is required for the program to run.
+	It must be located either in the directory of the executable  or
+	the in a directory contained in you system PATH.  go32.exe is
+	included in the compiled archive for your convenience.
+
+	This program was originally written in DOS, and to the best
+	knowledge of the author, does not run in a Win95 DOS box.  I have
+	not tested it in a Win98 DOS box, not have I tested it with the
+	newer versions of the go32.exe DOS extender, which may have more
+	favorable results.  If you have any problems, try restarting in
+	DOS mode and running.
+
+Questions or Comments?:
+
+	Feel free to contact me if you have any questions or comments
+	about anything contained in this archive.
+
+	Burt Samograd
+	burt@conspiracy-software.com
+	http://www.conspiracy-software.com
+
+
+
+
+

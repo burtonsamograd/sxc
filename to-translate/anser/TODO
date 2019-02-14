@@ -1,0 +1,6 @@
+-- implement - (negate) on busses (2's compliment)
+-- implement - (subtract) on busses
+
+-- implment / (divide) on busses (hard?)
+
+-- analyze why 'y = x * x' does not work in reverse

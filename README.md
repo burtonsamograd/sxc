@@ -1,12 +1,17 @@
-Development: http://github.com/BusFactor1Inc/sxc
+EXAMPLE:
 
+    $ ./sxcc.sh hello.sxc
+    $ ./a.out            
+    Hello, World!
+    $ make fire # TODO: make fire come out
+    $ C-c # Control-C to get your terminal back
 
 sxc - S-Expression C
 --------------------
 
-sxc is an an s-expression based language source transpiler for C.  By
-providing an S-expression based syntax, sxc adds full Lisp-like macro
-and code generation capabilities to the C language using Common Lisp.
+sxc is an s-expression based language source transpiler for C.  By
+providing an S-expression based syntax, sxc will attempt to add 
+Lisp-like macro and code generation capabilities to the C language (WIP).
 
 Motivation
 ----------
@@ -65,7 +70,10 @@ The following is a basic "Hello World" program:
 
 This can be compiled and run using the following:
 
-    sxcc -o hello hello.sxc && ./hello
+    ./sxcc.sh -o hello hello.sxc && ./hello
+
+Future Design
+--
 
 A more complex example is adding a new control structure to the
 language, like a 'string switch', which is like a standard C switch
@@ -138,7 +146,12 @@ Utilities
 A wrapper script 'sxcc' is provided to simplify building and
 compilation of program sources into an executable.
 
+TODO:
+--
+
+You can find some things to translate in to SXC in the to-translate/ directory.
+
 --
 Burton Samograd
-burton.samograd@gmail.com
-2016
+kruhft@icloud.com
+2018
