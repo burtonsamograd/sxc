@@ -1,3 +1,16 @@
+THIS REPOSORY IS OLD!!!
+
+PLEASE GO TO https://github.com/BusFactor1Inc/sxc for updates.
+
+Be sure to 'Star' if you want further notes on updates.
+
+Burton Samograd
+BusFactor1Inc -- 2019
+
+--
+
+
+
 EXAMPLE:
 
     $ ./sxcc.sh hello.sxc
