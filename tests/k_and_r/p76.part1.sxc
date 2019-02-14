@@ -1,0 +1,49 @@
+(#include <stdio.h>)
+(#include <stdlib.h>) 
+
+(#define MAXOP 100)	/* max size of operand or operator */
+(#define NUMBER '0)	/* signal that a number was found */
+
+(int getop (([] char)))
+(void push ((double)))
+(double pop (void))
+
+(int main ()
+     (var int type)
+     (var double op2)
+     (var char ([] s MAXOP))
+
+     (while (!= (= type (getop s)) EOF)
+       (fflush stdout)
+       (switch type
+	       (NUMBER
+	       	(printf "xx %s\n" s)
+	       (var float (= number (atof s)))
+		(push number)	
+		break)
+	       ('+
+		(push (+ (pop) (pop)))
+		break)
+	       ('*
+		(push (* (pop) (pop)))
+		break)
+	       ('-
+		(= op2 (pop))
+		(push (- (pop) op2))
+		break)
+	       ('/
+		(= op2 (pop))
+		(if (!= op2 0.0)
+		    (push (/ (pop) op2))
+		    (else
+		     (printf "error: zero divisor\n")))
+		break)
+	       ('\n
+		(printf "\t%.8g\n" (pop))
+		break)
+	       (EOF 
+	       	 (exit 0))
+	       (default
+		   (printf "error: unknown command %s\n" s)
+		   break)))
+     (return 0))

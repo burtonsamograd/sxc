@@ -4,6 +4,8 @@
 (int main ((int argc) (char (** argv)))
      (var long nc)
 
+     (= nc 0)
+
      (while (!= (getchar) EOF)
        (++ nc))
      (printf "%ld\n" nc)

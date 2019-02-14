@@ -1,10 +1,14 @@
 
-sxc=${SXC-./sxc.sh}
+sxc=${SXC-sxc.sh}
 delete_temp_file=true
 verbose=false
 
 tempfile () {
-    name=$1/$2-${RANDOM}$3;
+    dir=$1
+    head=$2
+    tail=$3
+    
+    name=$dir/$head-${RANDOM}$tail;
     mkdir -p $(dirname $name)
     touch $name
     echo $name
@@ -54,7 +58,7 @@ fi
 # generate c file names from sxc file names
 c_files=""
 for file in $sxc_files; do
-    c_file=$(tempfile /tmp $file .c)
+    c_file=$(tempfile . $file .c)
     c_files="$c_files $c_file"
 done
 

@@ -1,3 +1,10 @@
+-- handle lispy assignment and operations
+    (= a b c ...)
+    (+ a b c ...)
+
+-- macros
+   (macro (args ...) (code (CL)))
+
 DONE -- add (struct name
      	  	    type1 field
 		    type2 field ...)

@@ -134,11 +134,22 @@ called or used, followed by it's arguments.
 
 There are a some exceptions for convenience:
 
-(*?++ ...)	- post increment
-(++?* ...)	- pre increment
+++x   	        - pre-increment on variables
+x++   	        - post-increment on variables 
 
-(*?-- ...)	- post decrement
-(--?* ...)	- pre decrement
+This is due to the fact that all symbols are passed through directly
+to the C compiler, and you will find there are no exceptions to handle
+this in the sxc code.
+
+Also, for array operations:
+
+(*?++ ...)	- post increment on pointers (*x++)
+(++?* ...)	- pre increment on pointers (*(++x))
+
+(*?-- ...)	- post decrement on pointers (*x--)
+(--?* ...)	- pre decrement on pointers (*(--x))
+
+These are handled specially by sxc in the code.
 
 Utilities
 ---------
