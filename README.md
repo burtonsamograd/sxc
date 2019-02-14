@@ -153,5 +153,5 @@ You can find some things to translate in to SXC in the to-translate/ directory.
 
 --
 Burton Samograd
-kruhft@icloud.com
+busfactor1@icloud.com
 2018
