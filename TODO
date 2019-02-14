@@ -1,9 +1,13 @@
--- handle lispy assignment and operations
-    (= a b c ...)
+-- handle lispy operations
     (+ a b c ...)
 
 -- macros
    (macro (args ...) (code (CL)))
+
+-- macros
+   - design/sswitch.sxc for an example
+
+-- add (inline-c "int x = 0;")
 
 DONE -- add (struct name
      	  	    type1 field

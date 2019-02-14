@@ -1,5 +1,5 @@
 
-sxc=${SXC-sxc.sh}
+sxc=${SXC-sxc}.sh
 delete_temp_file=true
 verbose=false
 

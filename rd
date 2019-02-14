@@ -1,1 +1,1 @@
-rm -f *~
+find . -name '*~' -exec rm {} \;

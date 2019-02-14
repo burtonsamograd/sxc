@@ -1,1 +1,1 @@
-sxc $1 | indent
+${SXC-sxc} $1 | indent
