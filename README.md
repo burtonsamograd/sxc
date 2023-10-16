@@ -1,15 +1,5 @@
-THIS REPOSORY IS OLD!!!
-
-PLEASE GO TO https://github.com/BusFactor1Inc/sxc for updates.
-
-Be sure to 'Star' if you want further notes on updates.
-
-Burton Samograd
-BusFactor1Inc -- 2019
-
---
-
-
+sxc (S-Expression C) is a C like language described by parenthesized
+expressions for minimal syntax and the option of using macros.
 
 EXAMPLE:
 
