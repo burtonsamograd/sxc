@@ -1,8 +1,10 @@
 #!/bin/bash
 
-for i in $(find tests -name '*.sxc' | sort -n); do
+PWD=$(pwd)
+
+for i in $(find tests -name '*.sxc' | grep -v -e 'part[0-9]' | sort -n); do
     echo -n $i...
-    { ./sxcc.sh -Wall $i &&
+    { ./sxcc.sh -I$(PWD) -Wall $i &&
 	{ [ -f $i.in ] &&
 	    { ./a.out < $i.in | cmp $i.out - ; } ||
 	    { ./a.out | cmp $i.out - ; }

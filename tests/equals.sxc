@@ -1,0 +1,6 @@
+(#include <stdio.h>)
+
+(int main ((int argc) (char (** argv)))
+     (var int a x (= y 1) (= z 0))
+     (= a x (, y z))
+     (return 0))

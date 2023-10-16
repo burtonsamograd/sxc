@@ -1,0 +1,35 @@
+/* getop */
+
+(#include <ctype.h>)
+
+(int getch (void))
+(void ungetch ((int)))
+
+/* getop: get next operator or numeric operand */
+(int getop ((char ([] s)))
+     (var int i c)
+
+     (do
+      (= c (getch))
+      (while (|| (== (= ([] s 0) c) ' ) (== c '\t))))
+
+     (= ([] s 1) '\0)
+     (if (&& (! (isdigit c)) (!= c '.))
+	 (return c))  /* not a number */
+	 
+     (= i 0)
+     (if (isdigit c) /* collect integer part */
+	 (while (isdigit (= ([] s ++i) c (getch)))))
+
+     (if (== c '.)
+	 (while (isdigit (= ([] s ++i) c (getch)))))
+
+     (= ([] s i) '\0)
+
+     (if (!= c EOF)
+	 (ungetch c))
+
+     (printf "%d\n" i)
+     (printf "%s\n" s)
+
+     (return NUMBER))

@@ -1,0 +1,1021 @@
+<head><title>ACM Sigplan Notices 27, 8 (Aug. 1992), 89-98.</title>
+
+<link rev="made" href="mailto:hbaker1@pipeline.com">
+
+<h1>Lively Linear Lisp -- 'Look Ma, No Garbage!' <a href="#foot1">[footnote 1]</a></h1>
+
+<address>
+<a href="home.html">Henry G. Baker</a><br>
+Nimble Computer Corporation, 16231 Meadow Ridge Way, Encino, CA  91436<br>
+(818) 986-1436   (818) 986-1360 (FAX)<br>
+Copyright (c) 1991, 1992 by Nimble Computer Corporation
+</address>
+
+<h2>Abstract</h2>
+
+<p>Linear logic has been proposed as one solution to the problem of
+garbage collection and providing efficient "update-in-place"
+capabilities within a more functional language.  Linear logic
+conserves accessibility, and hence provides a <em>mechanical
+metaphor</em> which is more appropriate for a distributed-memory
+parallel processor in which copying is explicit.  However, linear
+logic's lack of sharing may introduce significant inefficiencies of
+its own.</p>
+
+<p>We show an efficient implementation of linear logic called
+<em>Linear Lisp</em> that runs within a constant factor of non-linear
+logic.  This Linear Lisp allows RPLACX operations, and manages storage
+as safely as a non-linear Lisp, but does not need a garbage collector.
+Since it offers assignments but no sharing, it occupies a twilight
+zone between functional languages and imperative languages.  Our
+Linear Lisp Machine offers many of the same capabilities as
+combinator/graph reduction machines, but without their copying and
+garbage collection problems.</p>
+
+</head><body>
+
+<h2>Introduction</h2>
+
+<blockquote>
+<strong>Neither a borrower nor a lender be;<br>
+For loan oft loses both itself and friend ...</strong> [Shakespeare, <cite>Hamlet</cite>, I. iii 75]
+</blockquote>
+
+<p>The sharing of data structures can be efficient, because sharing
+can substitute for copying, but it creates ambiguity as to who is
+responsible for their management.  This ambiguity is difficult to
+statically remove [Barth77] [Bloss89] [Chase87] [Hederman88] [Inoue88]
+[Jones89] [Ruggieri88], and we have shown
+
+<a href="Share-Unify.html">[Baker90]</a>
+
+that static sharing analysis--even for pure functional languages--may
+be as hard as ML type inference, which is known to be exponential
+[Mairson90].
+
+<a HREF="#foot2">[footnote 2]</a>
+
+We show here that a system which takes advantage of
+<em>incidental</em>, rather than <em>necessary</em>, sharing can
+provide efficiency without the ambiguity normally associated with
+sharing.</p>
+
+<p>Linear logic was invented by Girard [Girard87] as a way to deal
+with objects which should not be blithely shared or copied.  Wadler
+[Wadler91] has proposed the use of data structures with unity
+reference counts in order to avoid the problems of garbage collection
+and provide for O(1) array update.  Wakeling [Wakeling91] has
+implemented linear logic and found that it is extremely slow, due to
+its requirement for laborious copying.  Our Linear Lisp Machine
+implements unity reference count data structures more efficiently than
+Wakeling's machine, and should be "competitive" with traditional
+implementations of combinator/graph reduction machines.</p>
+
+<h2>A Linear Lisp Machine</h2>
+
+<p>In this section we introduce an automata-theoretic model of a Lisp
+Machine in which all cons cells have reference counts of exactly 1,
+which implies that all data structures are <em>trees</em>--i.e., they
+have no sharing or cycles.  For example, in our Linear Lisp,
+<code>NREVERSE</code> is isomorphic to <code>REVERSE</code>.</p>
+
+<p>Our machine consists of a finite state control and n pointer
+registers which can hold either <em>atoms</em> or pointers to
+<em>cons</em> cells.  An <em>atom</em> is either <code>NIL</code> or a
+<em>symbol</em>.  One of the registers--<code>fr</code>--is
+distinguished as the "free list" register, and is initialized to point
+to an infinite list of <code>NIL</code>'s.  Another
+register--<code>sp</code>--is designated as the "stack pointer"
+register.</p>
+
+<p>The machine can execute any of the following atomic operations:</p>
+
+<code><pre>
+r1&lt;-&gt;r2;		/* swap r1,r2. */
+r1&lt;-&gt;CAR(r2);		/* r1,r2 distinct; precondition(not ATOM(r2)) */
+r1&lt;-&gt;CDR(r2);		/* r1,r2 distinct; precondition(not ATOM(r2)) */
+NULL(r1);		/* predicate for r1=NIL */
+ATOM(r1);		/* predicate for r1=NIL or symbolp(r1) */
+EQ(r1,r2);		/* defined only for atomic r1,r2; see <a href="ObjectIdentity">[Baker93ER]</a> */
+r1:='foo;		/* precondition(ATOM(r1) and ATOM('foo)) constant 'foo */
+r1:=r2;			/* precondition(ATOM(r1) and ATOM(r2)) */
+
+CONS(r1,r2):		/* r1,r2 distinct; r2&lt;-CONS(r1,r2) and set r1=NIL */
+{r1&lt;-&gt;CAR(fr); r2&lt;-&gt;fr; fr&lt;-&gt;CDR(r2);};
+
+PUSH(r1,r2):		/* r1,r2 distinct; Push r1 onto r2 and set r1=NIL */
+CONS(r1,r2);
+
+POP(r1,r2):		/* r1,r2 distinct; Pop CAR(r2) into r1 if r1=NIL */
+if NULL(r1) and not ATOM(r2)
+   then {fr&lt;-&gt;CDR(r2); r2&lt;-&gt;fr; r1&lt;-&gt;CAR(fr);}
+   else die;
+</pre></code>
+
+<p><strong>Proposition 1.</strong> List cell reference counts are
+conserved and are always identically 1.</p>
+
+<p><em>Proof by induction</em> [Suzuki82,s.4].  All cons cells start
+out with unity reference counts, and are only manipulated by exchanges
+which preserve reference counts.  QED</p>
+
+<p><strong>Proposition 2.</strong> All list cells are always
+accessible--i.e. <em>live</em>, and no garbage is created.</p>
+
+<p><em>Proof by induction</em> [Suzuki82,s.5].  Storage could "leak"
+only if we performed <code>ri&lt;-&gt;CXR(ri)</code>, but we do not allow
+the swapping of a register with a portion of its own contents.
+QED</p>
+
+<p>Programming Note: The only way to "clear" a register which points
+to a list is to decompose the list stored there and put it back onto
+the free list.
+
+<a href="#foot3">[footnote 3]</a>
+
+</p>
+
+<code><pre>
+FREE(r1):			/* Essentially the K combinator! */
+if not NULL(r1) then
+   if ATOM(r1) then r1:='NIL;
+   else
+    {PUSH(r2,sp); POP(r2,r1);	/* temporary r2 ~= r1. */
+     FREE(r1);			/* <a href="#foot4">[footnote 4]</a> free the cdr of the cell. */
+     r2&lt;-&gt;r1; FREE(r1);		/* free the car of the cell. */
+     POP(r2,sp);}
+</pre></code>
+
+<p>We can copy, but only by destroying the original list and creating
+two new lists.</p>
+
+<code><pre>
+COPY(r1,r2):			/* assert(r2=NIL).  Essentially the S combinator! */
+if not NULL(r1) then
+   if ATOM(r1) then r2:=r1;
+   else
+    {PUSH(t1,sp); PUSH(t2,sp);
+     POP(t1,r1); COPY(r1,r2);
+     t1&lt;-&gt;r1; t2&lt;-&gt;r2; COPY(r1,r2);
+     t1&lt;-&gt;r1; t2&lt;-&gt;r2; PUSH(t1,r1); PUSH(t2,r2);
+     POP(t2,sp); POP(t1,sp);}
+</pre></code>
+
+<p>Finally, we can program recursive <code>EQUAL</code> by destroying
+and recreating both lists.  (We switch to Lisp notation in order to
+utilize the capabilities of <code>prog1</code>.)</p>
+
+<code><pre>
+EQUAL(r1,r2):				/* Recursive list equality. */
+(or (and (ATOM r1) (ATOM r2) (EQ r1 r2))
+    (and (not (ATOM r1)) (not (ATOM r2))
+         (progn (PUSH t1 sp) (PUSH t2 sp) (POP t1 r1) (POP t2 r2)
+          (prog1
+           (and (EQUAL r1 r2)
+                (progn (&lt;-&gt; t1 r1) (&lt;-&gt; t2 r2)
+                 (prog1 (EQUAL r1 r2)
+                  (&lt;-&gt; t1 r1) (&lt;-&gt; t2 r2))))
+           (PUSH t1 r1) (PUSH t2 r2) (POP t2 sp) (POP t1 sp)))))
+</pre></code>
+
+<p>Using these definitions, it should be clear that we can program a
+traditional Lisp interpreter (see Appendix).  However, this
+interpreter will be inefficient, due to the extra expense of copying.
+The one minor problem to be faced is how to handle recursive
+functions, since we cannot create cycles.  We suggest the following
+trick based on the lambda calculus Y combinator [Gabriel88]:</p>
+
+<code><pre>
+(defun fact (f n) (if (zerop n) 1 (* n (funcall f f (1- n)))))
+
+(defun factorial (n) (fact #'fact n))
+</pre></code>
+
+<h2>A Linear Lisp Machine with <code>FREE</code>, <code>COPY</code>,
+<code>EQUAL</code> and Assignment</h2>
+
+<p>In the previous section, we described a Linear Lisp Machine in
+which <code>FREE</code>, <code>COPY</code> and <code>EQUAL</code> had
+to be programmed.  Now that we have seen how to implement these three
+functions, we will describe a new machine in which they are primitive
+operations--e.g., they are implemented in microcode.  This revision
+will not provide much additional efficiency, but it will provide a
+more traditional set of primitive operations.</p>
+
+<code><pre>
+r1:=r2:				/* r1, r2 cannot be the same register. */
+{FREE(r1); COPY(r2,r1);}
+
+r1:=CAR(r2):			/* r1, r2 cannot be the same register. */
+{r3&lt;-&gt;CAR(r2); r1:=r3; r3&lt;-&gt;CAR(r2);}
+
+r1:=CDR(r2):			/* r1, r2 cannot be the same register. */
+{r3&lt;-&gt;CDR(r2); r1:=r3; r3&lt;-&gt;CDR(r2);}
+
+RPLACA(r1,r2):			/* CAR(r1):=r2.  r1, r2 cannot be the same register. */
+{r3&lt;-&gt;CAR(r1); r3:=r2; r3&lt;-&gt;CAR(r1);}
+
+RPLACD(r1,r2):			/* CDR(r1):=r2.  r1, r2 cannot be the same register. */
+{r3&lt;-&gt;CDR(r1); r3:=r2; r3&lt;-&gt;CDR(r1);}
+</pre></code>
+
+<p>Using this new set of operations, we can now program our Lisp
+interpreter in the traditional way, although this interpreter will now
+be slower unless we have taken precautions to avoid extraneous
+copying.  This interpreter is still <em>linear</em> logic, in which
+there is no sharing, however, so operations like <code>RPLACX</code>
+cannot create loops.</p>
+
+<h2>Dataflow-like Producer/Consumer <code>EVAL</code></h2>
+
+<p>Before showing how to make <code>FREE</code>, <code>COPY</code> and
+<code>EQUAL</code> more efficient, it is instructive to show a natural
+programming metaphor for Linear Lisp.  The natural metaphor for Linear
+Lisp is quantum mechanics, in which objects interact, and every
+interaction with an object--including reading--affects the object.</p>
+
+<p>Linear Lisp calls for the mechanical interpretation of a function
+as a "black box" which <em>consumes</em> its arguments and
+<em>produces</em> its result, while returning the black box to its
+quiescent state.  Since an argument to a function is consumed, the
+function can reference it only once, after which the formal parameter
+binding becomes unbound!  In fact, the requirement to return the box
+to its quiescent state means that <strong>every parameter and local
+variable must be referenced exactly once, since it is a run-time error
+to return from the function so long as any parameters or local
+variables still have bindings.</strong>
+
+<a href="#foot5">[footnote 5]</a>
+
+In order to utilize a value more than once, it must be explicitly
+copied.  We relax the "reference-once" requirement in the case of
+multiple-arm conditionals.  Since the execution of one arm implies the
+non-execution of the other arms, the single use of the variable within
+each arm is sufficient to guarantee that single use is dynamically
+satisfied.
+
+<a href="#foot6">[footnote 6]</a>
+
+In fact, the best policy is to reference exactly the same set of
+variables in all of the arms of the conditional.  The
+exactly-one-reference policy can be checked syntactically at
+compile-time in a manner analogous to the "occurs free" predicate of
+the lambda calculus.</p>
+
+<p>The following technique should make the programming of certain
+predicates more efficient.  A value passed to a predicate is often
+subsequently used in the arm of a conditional, yet in many of these
+cases, the predicate does not depend upon any deep property of the
+value.  The cost of copying and then consuming the <em>entire</em>
+value is therefore wasted.  For such a "shallow" predicate, one might
+rather program it to return (a list of) two values--the value of the
+predicate and its reconstituted arguments, which is then bound to new
+parameters and (re)used in the subsequent computation.</p>
+
+<p>Since the argument to <code>CAR</code> or <code>CDR</code> is
+completely consumed, how can one gain access to both components?  The
+natural model for binding in Linear Lisp is that of a
+<em>destructuring bind</em>, which binds a number of variables
+"simultaneously", while recycling the backbone of the value-containing
+list structure.  This destructuring bind eliminates the need for
+separate <code>CAR</code> and <code>CDR</code> functions.</p>
+
+<p>Nested functional composition has the obvious mechanical
+interpretation, since the intermediate results are utilized by exactly
+one consumer.  The mechanical metaphor also shows that parallel
+execution of subexpressions is possible and correct (so long as the
+primitive <code>CONS</code> itself--the creator of argument
+<em>lists</em>--evaluates its arguments in parallel), since there is
+no mechanism whereby the subexpressions can communicate.  Thus,
+collateral argument evaluation
+
+<a href="Futures.html">[Baker77]</a>
+
+can be considered the norm, and on this machine there are no garbage
+collection problems because every callee is required to "clean up"
+after itself.  Unfortunately, the hash consing technique described
+later requires that <code>CONS</code> be (transitively) strict in both
+of its arguments.  As a result, only variable binding itself can be
+lazy, which isn't nearly lazy enough for most interesting applications
+of laziness; lazy "futures"
+
+<a href="Futures.html">[Baker77]</a>
+
+cannot be supported.</p>
+
+<p>The analogy with a dataflow machine [Arvind87] is quite close.
+Values are <em>tokens</em> which are consumed by a function to produce
+a new token/value.  The implementation of the token metaphor on our
+Swapping Lisp Machine is straightforward.  In addition to
+programmer-visible values, we also have "holes", which are the
+bindings of variables when they are "unbound".  Argument passing is
+accomplished by "swap-in, swap-out" (reminiscent of [Harms91]), and
+"holes" flow backwards relative to values.  When implemented in this
+way (see Appendix), <code>EVAL</code> avoids most copying, and should
+be reasonably efficient even without the hash consing scheme discussed
+in the next section.</p>
+
+<h2>Reconstituting Trees from Fresh Frozen Concentrate</h2>
+
+<p>We will now show how to implement a linear machine with the
+instructions <code>CONS</code>, <code>CAR</code>, <code>CDR</code>,
+<code>COPY</code>, <code>EQUAL</code>, <code>RPLACA</code>,
+<code>RPLACD</code>, <code>NULL</code>, <code>ATOM</code> and
+<code>EQ</code> in such a way that all of these instructions operate
+in O(1) average time.  In other words, our machine will be as fast as
+a machine based on "hash consing" [Goto74], except that our machine
+can also execute <code>RPLACX</code>.</p>
+
+<p>Our machine will operate on a "virtual heap", and the real heap
+will be separated from the CPU by a "read barrier" [Moon84].  More
+precisely, the cons cells pointed at directly by the machine registers
+will operate in the fashion described above, but any cons cells which
+are not directly pointed at by machine registers may be represented
+differently.  In particular, any cons cells which are not directly
+pointed at by machine registers are represented in a hidden hash table
+which is built in such a way that list structures which are
+<code>EQUAL</code> will be represented by exactly the same cell in
+this hash table.  This "hash cons" table is built inductively from
+cells having atomic <code>CAR</code>'s and <code>CDR</code>'s by
+hashing the addresses of non-atomic <code>CAR</code>'s and
+<code>CDR</code>'s; this scheme is called "hash consing" and under the
+appropriate circumstances the cost of a "hash cons" operation averages
+O(1).  Furthermore, these cells can be dereferenced for
+<code>CAR</code> or <code>CDR</code> in O(1) time.  These cells cannot
+be side-effected, however, so that <code>RPLACX</code> cannot be used
+directly on these hash-consed cells.  We will manage this hash table
+using reference counts, since we intend that cells stored in this
+table are capable of being shared.</p>
+
+<p>We now analyze the operation of the read barrier.  If the CPU
+attempts to read the <code>CAR</code> or <code>CDR</code> of a cell
+referenced directly by a machine register, then the read barrier
+causes the cell in the hash table to be copied ("unshared") into a
+normal cell, and the reference count of the cell in the hash table is
+decremented.  Similarly, if the CPU attempts to write the
+<code>CAR</code> or <code>CDR</code> of a cell referenced directly by
+a machine register, then the cell is copied into the hash table by
+"hash consing" (including incrementing the reference counter) and the
+copied pointer is stored into the <code>CAR/CDR</code> instead.</p>
+
+<p>Since there are never more than n "normal" cells which can be seen
+by the CPU, because there are only n registers, and because none of
+these normal cells can be shared, we can eliminate the expense of
+allocating and deallocating these cells, and associate one of these
+normal cells with each machine register.  Thus, all storage management
+effort is concentrated in the hash cons table.</p>
+
+<p>Another optimization is that of keeping a "hidden" pointer in each
+normal cell to the entry in the hash table from which it was copied;
+if it is newly consed, then this pointer is empty.  This pointer is
+used as a "hint" when hash consing, so that no searching will be
+necessary to share the cell in the hash consed heap.  Of course, any
+side-effects to this normal cell will cause its "hint" pointer to be
+cleared, since we will now require a hash lookup in order to share the
+cell in the hash consed heap.</p>
+
+<p>Since the free list seen by the CPU is an infinite list of
+<code>NIL</code>'s, we can represent it as a special <em>circular</em>
+list of one cell in the hash table whose reference count is not
+modified.  In this case, the free list register is identical in nature
+to the other registers in the CPU; the only difference is in the hash
+table pointer stored in the <code>CDR</code> of the first cell on the
+list.</p>
+
+<p>Of course, there is a real "free list" which is hidden from the CPU
+which is used to provide cells for the hash table when a
+never-before-hashed &lt;<code>CAR,CDR</code>&gt; configuration is
+seen.  This "free list" is refreshed whenever the reference count of a
+table entry drops to zero.  Depending upon our time/space tradeoff, we
+can either recycle hash table cells aggressively or lazily.  If we
+recycle aggressively, then we may have to recycle an unbounded number
+of nodes at one time, which can create an unbounded delay.
+Alternatively, we can recycle lazily, in which case the
+<code>CAR</code> and <code>CDR</code> of a recycled cell are only
+marked as deleted, but not actually reclaimed, at the time that the
+reference count for the cell drops to zero.  Notice, though, that any
+sublists of this "garbage" list are still hashable by the hash table
+and can become non-garbage at any time.  Thus, the garbage is not
+really garbage, although it can only be used for a very special
+purpose until recycled for general use.</p>
+
+<p>We can now describe the operation of our "fast" machine.  All
+primitive operations, with the exception of <code>FREE</code>,
+<code>COPY</code> and <code>EQUAL</code>, operate exactly as if the
+CPU were operating on a "real heap" rather than a "virtual heap".
+<code>COPY</code> copies only the top-level cons cell, and "copies"
+the sublists by simply incrementing the reference counts of the
+<code>CAR</code> and <code>CDR</code> cells in the hash table.
+<code>EQUAL</code> compares only the top-level cons cell, and simply
+compares the addresses of the <code>CAR</code>'s and
+<code>CDR</code>'s for their locations in the hash table.  Thus,
+<code>COPY</code> and <code>EQUAL</code> are both O(1) operations.  If
+we utilize lazy recycling for hash table entries, then
+<code>FREE</code> is also an O(1) operation.</p>
+
+<h2>Linear Lisp <code>EVAL</code></h2>
+
+<p>It is interesting to analyze the operation of a traditional Lisp
+interpreter written for this Linear Lisp Machine (see Appendix).
+Since traditional Lisp utilizes "applicative order" evaluation, an
+argument used multiple times is only evaluated once.  The traditional
+problem in "call-by-need" evaluation has been the shared flag variable
+which indicates that the argument has already been computed; Linear
+Lisp utilizes its arguments exactly once, with an explicit copy
+required for additional uses, so the applicative-order/normal-order
+issue is moot and the shared flag variable is not necessary.  Our use
+of hash consing requires transitive strictness on both of its
+arguments; otherwise <code>EQUAL</code>'ity could be decided prior to
+the determination of a lazy value, since <code>EQUAL</code> and
+<code>EQ</code> are equivalent for hash conses.  Thus, parallel
+evaluation of arguments can be supported, but not laziness.  On the
+other hand, the implicit synchronization required to strictly resolve
+a "future"
+
+<a href="Futures.html">[Baker77]</a>
+
+can be efficiently performed with a swapping operation
+[Herlihy91].</p>
+
+<p>Since the association list of variable bindings must be destroyed
+in order to search it anyway, the "shallow binding" technique
+utilizing "rerooting"
+
+<a href="ShallowBinding.html">[Baker78]</a>
+
+is essentially optimal.</p>
+
+<p>We <em>can</em> destroy the Lisp program during evaluation in the
+manner of combinator/graph reduction [Turner79] [Kieburtz85]
+[Kieburtz87] [Johnsson85] [Johnsson91]; indeed, we <em>must</em>
+destroy it, since we cannot reference it otherwise, as all of its
+reference counts are one!</p>
+
+<h2>Implications for Real Multiprocessors</h2>
+
+<p>Linear Lisp can be used in a "shared-heap-memory" multiprocessing
+configuration, in which the memory to be shared is actually the hash
+consed heap.  Each CPU operates independently, with its "normal nodes"
+acting like a local cache into the heap.  The read barrier logic is
+the "cache consistency protocol" for this hashed memory, which is
+simple because there is no visible sharing among CPU's.  This parallel
+configuration can be used, e.g., for the collateral evaluation of
+arguments.</p>
+
+<p>Hardware swapping has been advocated as a synchronization mechanism
+[Herlihy91].  However, even without hardware swaps, modern RISC
+compilers can optimize register-register swaps, while write-back
+caches reduce the cost of register-memory swaps; swaps should thus be
+relatively cheap even on a traditional load/store architecture.</p>
+
+<h2>Conclusions and Previous Work</h2>
+
+<p>Some have suggested that garbage collection not be done at all
+[White80] or after the program has finished [Moon84] (comment on the
+Boyer benchmark).  Linear Lisp provides a hyper-clean environment in
+which garbage is never produced, and therefore garbage collection is
+not necessary.</p>
+
+<p>Hash consing was invented by Ershov for the detection of common
+subexpressions in a compiler
+
+<a href="othergc/Ershov-Hash.txt">[Ershov58]</a>
+
+and popularized by Goto for
+use in a Lisp-based symbolic algebra systems [Goto74] [Goto76]
+[Goto80].  While a hash-consing system with reference count management
+can be used to implement a functional (applicative) subset of Lisp
+with the same efficiency shown here, we believe that our Linear Lisp
+Machine is the first efficient implementation which allows for
+(linear) side-effects such as <code>RPLACX</code>.  See
+
+<a href="BoyerB.html">[Baker92]</a>
+
+for a "warp speed" implementation of the Gabriel "Boyer" benchmark
+using hash consing.</p>
+
+<p>Linear Lisp is an ideal environment for symbolic algebra, since it
+provides the efficiencies of sharing, including fast copying and fast
+equality checking [Goto76], without the problems.  For example, the
+Macsyma symbolic algebra system can represent the symbolic determinant
+of an nxn matrix with O(n^3) cons cells, even though this expression
+prints out with O(n!) terms.  Furthermore, Linear Lisp allows for
+destructive operations on expressions, which can sometimes be more
+efficient [Gabriel85] [Fateman91], yet these destructive operations
+are completely safe.</p>
+
+<p>While our Linear Lisp cannot support laziness, because
+<code>CONS</code> is transitively strict in both arguments, it does
+support a mild form of side-effects.  Linear Lisp <code>RPLACX</code>
+cannot be used to produce (visible) sharing, and hence requirements
+for "object identity" expressed in
+
+<a href="ObjectIdentity.html">[Baker93ER]</a>
+
+are vacuously met for cons cells.  These cells live in a twilight zone
+between functional and non-functional data; any "side-effects" to the
+data are not really "side"-effects because they are not visible
+through any other pointer alias.  [Myers84] describes a scheme for
+implementing certain imperative data structures efficiently using
+applicative data structures.  We believe that the implementation of
+side-effects in Linear Lisp <em>automatically</em> produces the
+efficiency claimed by his scheme, without translating the program into
+applicative form.</p>
+
+<p>[Harms91] discusses the advantages of unity reference count data
+structures and swapping for efficient programming of abstract data
+types, although he utilizes notions as "unshared" or "non-aliased"
+instead of unity reference counts.  [Kieburtz76] also advocates the
+use of hidden (unity reference count) pointers.  Pointer swapping can
+be used to minimize reference count overflows in systems with limited
+counts [Wise77], and to avoid appearing multiply referenced
+[Deutsch76].  Memory-to-memory swapping is a superior form of
+synchronization [Herlihy91], so we expect to see efficient swapping
+operations implemented on future shared-memory multiprocessors.</p>
+
+<p>Our Linear Lisp Machine <em>consumes</em> the programs it
+interprets, therefore requiring a private copy of the code in the
+manner of a combinator reduction machine.  The Linear Lisp
+<code>COPY</code> is more efficient, however, than the real copying
+utilized in combinator reduction machines.  A machine which consumes
+its programs provides new insight into the mechanisms of instruction
+caches (see also [Kieburtz87]) and "index registers".  Since index
+registers were invented in order to avoid side-effecting code, and
+since all modern CPU's utilize instruction caches, the index register
+is obsolete!  Linear logic provides a firm semantics for an unshared
+instruction stream, which could be destructively modified without
+causing havoc.</p>
+
+<p>Other approaches to "linear-like" logic include <em>connection
+graphs</em> [Bawden86], <em>chemical abstract machines</em> [Berry90],
+<em>linear abstract machines</em> [Lafont88] and <em>interaction
+nets</em> [Lafont90].</p>
+
+<p>We have not yet integrated arrays into our Linear Lisp, so we
+cannot perform imperative array updates.  However,
+
+<a href="ShallowArrays.html">[Baker91SB]</a>
+
+shows an efficient O(1) implementation of array updates for
+"single-threaded" programs.  Another approach would be to incorporate
+<em>I-Structures</em> [Arvind89] into Linear Lisp.</p>
+
+<h2>Acknowledgements</h2>
+
+<p>We appreciate the helpful discussions with Peter Deutsch, Richard
+Fateman, Robert Keller, Nori Suzuki and David Wise about these
+concepts.</p>
+
+<h2>References</h2>
+
+<p>Abadi, M., and Plotkin, G.D.  "A Logical View of Composition and
+Refinement".  <cite>Proc. ACM POPL 18</cite> (Jan. 1991), 323-332.</p>
+
+<p>Arvind, and Nikhil, R.S.  "Executing a program on the MIT
+tagged-token dataflow architecture".  <cite>PARLE'87,</cite> v. II,
+Springer LNCS 259, 1987, 1-29.</p>
+
+<p>Arvind, and Nikhil, R.S., and Pingali K.K.  "I-Structures: Data
+Structures for Parallel Computing".  <cite>ACM TOPLAS 11,</cite> 4
+(Oct. 1989), 598-632.</p>
+
+<p>
+
+<a href="Futures.html">[Baker77]</a>
+
+Baker, H.G., and Hewitt, C.  "The Incremental Garbage Collection of
+Processes".  <cite>Proc. ACM Symp. on AI & Progr. Langs., Sigplan Not.
+12,</cite> 8 (Aug. 1977), 55-59.</p>
+
+<p>
+
+<a href="ShallowBinding.html">[Baker78]</a>
+
+Baker, H.G.  "Shallow Binding in Lisp 1.5".  <cite>Comm. ACM
+21,</cite> 7 (July 1978), 565-569.</p>
+
+<p>
+
+<a href="Share-Unify.html">[Baker90]</a>
+
+Baker, H.G.  "Unify and Conquer (Garbage, Updating, Aliasing, ...)  in
+Functional Languages".  <cite>Proc. 1990 ACM Conf. on Lisp and Functional
+Progr.,</cite> June 1990, 218-226.</p>
+
+<p>
+
+<a href="ShallowArrays.html">[Baker91SB]</a>
+
+Baker, H.G.  "Shallow Binding Makes Functional Arrays Fast".
+<cite>ACM Sigplan Not. 26,</cite> 8 (Aug. 1991), 145-147.</p>
+
+<p>
+
+<a href="BoyerB.html">[Baker92]</a>
+
+Baker, H.G.  "The Boyer Benchmark at Warp Speed".  <cite>ACM Lisp
+Pointers V,</cite> 3 (Jul-Sep 1992), 13-14.</p>
+
+<p>
+
+<a href="ObjectIdentity.html">[Baker93ER]</a>
+
+Baker, H.G.  "Equal Rights for Functional Objects".  <cite>ACM OOPS
+Messenger 4,</cite> 4 (Oct. 1993), 2-27.</p>
+
+<p>Barth, J.  "Shifting garbage collection overhead to compile time".
+<cite>Comm. ACM 20,</cite> 7 (July 1977), 513-518.</p>
+
+<p>Barth, Paul S., <i>et al.</i> "M-Structures: Extending a Parallel,
+Non-strict, Functional Language with State".  <cite>Proc. Funct.
+Progr.  Langs. & Computer Arch.</cite> LNCS 523, Springer-Verlag, Aug.
+1991, 538-568.</p>
+
+<p>Bawden, Alan.  "Connection Graphs".  <cite>Proc. ACM Conf. on Lisp
+& Funct. Progr.</cite> Camb., MA, Aug. 1986, 258-265.</p>
+
+<p>Beeler, M., Gosper, R.W, and Schroeppel, R.  "HAKMEM".  AI Memo
+239, MIT AI Lab., Feb. 1972.  Important items: 102, 103, 104, 149,
+150, 161, 166, 172.</p>
+
+<p>Berry, G., and Boudol, G.  "The Chemical Abstract Machine".
+<cite>ACM POPL 17.</cite> San Francisco, CA, Jan. 1990, 81-94.</p>
+
+<p>Bloss, A.  "Update Analysis and the Efficient Implementation of
+Functional Aggregates".  <cite>4'th Conf. on Funct. Progr. & Comp.
+Arch.</cite> London, Sept. 1989, 26-38.</p>
+
+<p>Chase, David.  <cite>Garbage Collection and Other
+Optimizations.</cite> PhD Thesis, Rice U. Comp. Sci. Dept., Nov.
+1987.</p>
+
+<p>Collins, G.E.  "A method for overlapping and erasure of lists".
+<cite>Comm. ACM 3,</cite> 12 (Dec. 1960), 655-657.</p>
+
+<p><a href="othergc/Ershov-Hash.txt">[Ershov58]</a>
+
+Ershov, A.P.  "On Programming of Arithmetic Operations".  Doklady,
+<cite>AN USSR 118,</code> 3 (1958), 427-430, <i>transl.</i> Friedman,
+M.D., <cite>Comm. ACM 1,</cite> 8 (Aug. 1958), 3-6.</p>
+
+<p>Fateman, Richard J.  "Endpaper: FRPOLY: A Benchmark Revisited".
+<cite>Lisp & Symbolic Comput. 4</cite> (1991), 155-164.</p>
+
+<p>Gabriel, R.P.  <cite>Performance and Evaluation of Lisp
+Systems.</cite> MIT Press, 1985.</p>
+
+<p>Gabriel, R.P.  "The Why of Y".  <cite>ACM Lisp Pointers 2,</cite> 2
+(Oct.-Dec. 1988), 15-25.</p>
+
+<p>Girard, J.-Y.  "Linear Logic".  <cite>Theoretical Computer Sci.
+50</cite> (1987), 1-102.</p>
+
+<p>Goto, Eiichi.  "Monocopy and Associative Algorithms in an Extended
+Lisp".  Tech. Rep. 74-03, Info. Sci. Lab., U. Tokyo, April 1974.</p>
+
+<p>Goto, Eiichi, and Kanada, Yasumasa.  "Hashing Lemmas on Time
+Complexities with Applications to Formula Manipulation".  <cite>Proc.
+ACM SYMSAC'76,</cite> Yorktown Hgts., NY, 1976.</p>
+
+<p>Goto, E., <i>et al.</i> "Parallel Hashing Algorithms".  <cite>Info.
+Proc.  Let.  6,</cite> 1 (Feb. 1977), 8-13.</p>
+
+<p>Goto, E., <i>et al.</i> "Design of a Lisp Machine Ñ FLATS".
+<cite>Proc.  ACM Lisp & Funct. Progr. Conf.</cite> 1982, 208-215.</p>
+
+<p>Harms, D.E., and Weide, B.W.  "Copying and Swapping: Influences on
+the Design of Reusable Software Components".  <cite>IEEE Trans. SW
+Engrg.  17,</cite> 5 (May 1991), 424-435.</p>
+
+<p>Hederman, Lucy.  <cite>Compile Time Garbage Collection.</cite> MS
+Thesis, Rice University Computer Science Dept., Sept. 1988.</p>
+
+<p>Herlihy, Maurice.  "Wait-Free Synchronization".  <cite>ACM TOPLAS
+11,</cite> 1 (Jan. 1991), 124-149.</p>
+
+<p>Inoue, K., <i>et al.</i> "Analysis of functional programs to detect
+run-time garbage cells".  <cite>ACM TOPLAS 10,</cite> 4 (Oct. 1988),
+555-578.</p>
+
+<p>Johnsson, T.  "Efficient compilation of lazy evaluation".
+<cite>Proc.  1984 ACM Conf. on Compiler Constr.</cite> Montreal,
+1984.</p>
+
+<p>Johnsson, T.  "Lambda lifting: transforming programs to recursive
+equations".  <cite>Proc. FPCA, Nancy, France, Springer LNCS
+201,</cite> 1985, 190-203.</p>
+
+<p>Johnsson, T.  "Parallel Evaluation of Functional Programs: The
+<v,G>-machine approach".  <em>Proc. PARLE'91,</em> v. I., Springer
+LNCS 505, Berlin, 1991, 1-5.</p>
+
+<p>Jones, S.B., and Le Metayer, D.  "Compile-time garbage collection
+by sharing analysis".  <cite>ACM Funct. Progr. Langs. & Comp.
+Arch.</cite> 1989, 54-74.</p>
+
+<p>Kieburtz, Richard B.  "Programming without pointer variables".
+<cite>Proc. Conf. on Data: Abstraction, Definition and Structure,
+Sigplan Not. 11</cite> (special issue 1976), 95-107.</p>
+
+<p>Kieburtz, Richard B.  "The G-machine: a fast, graph-reduction
+evaluator".  <cite>Proc. IFIP FPCA</cite> Nancy, France, 1985.</p>
+
+<p>Kieburtz, Richard B.  "A RISC Architecture for Symbolic
+Computation".  <cite>Proc. ASPLOS II, Sigplan Not. 22,</cite> 10 (Oct.
+1987), 146-155.</p>
+
+<p>Knight, Tom.  "An Architecture for Mostly Functional Languages".
+<cite>Proc. ACM Conf. on Lisp & Funct. Progr.</cite> MIT, Aug. 1986,
+105-112.</p>
+
+<p>Lafont, Yves.  "The Linear Abstract Machine".  <cite>Theor.
+Computer Sci.  59</cite> (1988), 157-180.</p>
+
+<p>Lafont, Yves.  "Interaction Nets".  <cite>ACM POPL 17,</cite> San
+Franciso, CA, Jan. 1990, 95-108.</p>
+
+<p>Lafont, Yves.  "The Paradigm of Interaction (Short Version)".
+Unpubl. manuscript, July 12, 1991, 18p.</p>
+
+<p>Lieberman, H., and Hewitt, C.  "A Real-Time Garbage Collector Based
+on the Lifetimes of Objects".  <cite>Comm. ACM 26,</cite> 6 (June
+1983), 419-429.</p>
+
+<p>MacLennan, B.J.  "Values and Objects in Programming Languages".
+<cite>ACM Sigplan Not. 17,</cite> 2 (Dec. 1982), 70-79.</p>
+
+<p>Mairson, H.G.  "Deciding ML Typability is Complete for
+Deterministic Exponential Time".  <cite>17'th ACM POPL,</cite> Jan.
+1990, 382-401.</p>
+
+<p>Mason, Ian A.  <cite>The Semantics of Destructive Lisp.</cite> Ctr.
+for the Study of Lang. & Info., Stanford, CA, 1986.</p>
+
+<p>Moon, D.  "Garbage Collection in a Large Lisp System".  <cite>ACM
+Symp.  on Lisp and Functional Prog.,</cite> Austin, TX, 1984,
+235-246.</p>
+
+<p>Morris, J.M.  "A proof of the Schorr-Waite algorithm".  In Broy,
+M., and Schmidt, G., Eds.  <cite>Theoretical Foundations of
+Programming Methodology.</cite> NATA Advanced Study Inst., D. Reidel,
+1982, 43-51.</p>
+
+<p>Myers, Eugene W.  "Efficient Applicative Data Types".  <cite>ACM
+POPL 11,</cite> Salt Lake City, UT, Jan. 1984, 66-75.</p>
+
+<p>Peyton-Jones, S.L.  <cite>The Implementation of Functional
+Programming Languages.</cite> Prentice-Hall, New York, 1987.</p>
+
+<p>Rees, J. and Clinger, W., <i>et al.</i> "Revised Report on the
+Algorithmic Language Scheme".  <cite>ACM Sigplan Notices 21,</cite> 12
+(Dec. 1986), 37-79.</p>
+
+<p>Ruggieri, Cristina; and Murtagh, Thomas P.  "Lifetime analysis of
+dynamically allocated objects".  <cite>ACM POPL '88,</cite>
+285-293.</p>
+
+<p>Schorr, H., and Waite, W.M.  "An efficient machine-independent
+procedure for garbage collection in various list structures".
+<cite>Comm. ACM 10,</cite> 8 (Aug. 1967), 501-506.</p>
+
+<p>Strom, R.E., <i>et al.</i> "A recoverable object store".  IBM
+Watson Research Ctr., 1988.</p>
+
+<p>Suzuki, N.  "Analysis of Pointer 'Rotation'".  <cite>Comm. ACM
+25,</cite> 5 (May 1982), 330-335.</p>
+
+<p>Terashima, M., and Goto, E.  "Genetic Order and Compactifying
+Garbage Collectors".  <cite>Info. Proc. Lett. 7,</cite> 1 (Jan. 1978),
+27-32.</p>
+
+<p>Turner, D.  "A New Implementation Technique for Applicative
+Languages".  <cite>SW--Pract. & Exper. 9</cite> (1979), 31-49.</p>
+
+<p>Wadler, Philip.  "Linear types can change the world!".  <cite>IFIP TC2
+Conf. on Progr. Concepts & Meths.,</cite> April 1990.</p>
+
+<p>Wadler, Philip.  "Is there a use for linear logic?".  <cite>Proc.
+ACM PEPM'91,</cite> New Haven, June, 1991, 255-273.</p>
+
+<p>Wakeling, D., and Runciman, C.  "Linearity and Laziness".
+<cite>Proc.  Funct. Progr. & Computer Arch.,</cite> LNCS 523,
+Springer-Verlag, Aug. 1991, 215-240.</p>
+
+<p>Weizenbaum, J.  "Symmetric List Processor".  <cite>Comm. ACM
+6,</cite> 9 (Dec. 1963), 524-544.</p>
+
+<p>White, Jon L.  "Address/Memory Management for a Gigantic LISP
+Environment, or GC Considered Harmful".  <cite>Proc. 1980 Lisp
+Conf.</cite> Stanford U., Aug. 1980, 119-127.</p>
+
+<p>Wilson, Paul R.  <cite>Two comprehensive virtual copy
+mechanisms.</cite> Master's Thesis, U. Ill. @ Chicago, 1988.</p>
+
+<p>Wilson, P.R., and Moher, T.G.  "Demonic memory for process
+histories".  <cite>Proc. Sigplan PLDI,</cite> June 1989.</p>
+
+<p>Wilson, Paul R.  "Some Issues and Strategies in Heap Management and
+Memory Hierarchies".  <cite>ACM Sigplan Not. 26,</cite> 3 (March
+1991), 45-52.</p>
+
+<p>Wise, D.S., and Friedman, D.P.  "The one-bit reference count".
+<cite>BIT 17,</cite> 3 (Sept. 1977), 351-359.</p>
+
+<p>Wise, David S.  "Design for a Multiprocessing Heap with On-board
+Reference Counting".  <cite>Proc. Funct. Progr. Langs & Computer
+Arch.,</cite> Nancy, France, LNCS 201, Springer, Sept.,
+1985, 289-304.</p>
+
+<h2>Appendix.  A Metacircular Linear Lisp Interpreter</h2>
+
+<code><pre>
+(defmacro free (x) `(setq ,x nil))	; just for testing...
+
+(defmacro mif (be te ee)
+  (let ((vs (car (freevars be))))
+    `(if-function
+       #'(lambda () ,be)
+       #'(lambda ,vs ,te)
+       #'(lambda ,vs ,ee))))
+
+(defun if-function (be te ee)
+  (dlet* (((pval . stuff) (funcall be)))
+    (if pval (apply te stuff) (apply ee stuff))))
+
+(defmacro mcond (&rest clauses)
+  (dlet* ((((be . rest) . clauses) clauses))
+    (if (eq be 't) `(progn ,@rest)
+      `(mif ,be (progn ,@rest)
+         (mcond ,@clauses)))))
+
+(defun matom (x) `(,(atom x) ,x))
+
+(defun meq (x y) `(,(eq x y) ,x))
+
+(defun meq2 (x y) `(,(eq x y) ,x ,y))
+
+(defun msymbolp (x) `(,(symbolp x) ,x))
+
+(defun mnull (x) `(,(null x) ,x))
+
+(defun mcopy (x)		; Pedagogical non-primitive copy function.
+  (mif (matom x) `(,x ,@x)	; primitive is allowed to copy symbol refs.
+    (dlet* (((carx . cdrx) x)
+            ((ncar1 . ncar2) (mcopy carx))
+            ((ncdr1 . ncdr2) (mcopy cdrx)))
+      `((,ncar1 ,@ncdr1) . (,ncar2 ,@ncdr2)))))
+
+(defun massoc (x e)		; return binding, else nil.
+  (mif (mnull e) (progn (free x) `(nil ,@e))
+    (dlet* ((((var . val) . reste) e))
+      (mif (meq2 x var) (progn (free x) `((,var ,@val) ,@reste))
+        (dlet* (((nbinding . nreste) (massoc x reste)))
+          `(,nbinding . ((,var ,@val) ,@nreste)))))))
+
+(defun mevprogn (xl e)
+  (dlet* (((x . xl) xl))
+    (mif (mnull xl) (progn (assert (null xl)) (meval x e))
+      (dlet* (((xval . ne) (meval x e))
+              ((xlval . nne) (mevprogn xl ne)))
+        (free xval)
+        `(,xlval ,@nne)))))
+
+(defun meval (x e)
+  (mcond
+   ((msymbolp x) (dlet* ((((var . val) . ne) (massoc x e)))
+                   (free var)
+                   `(,val ,@ne)))
+   ((matom x) `(,x ,@e))
+   (t (dlet* ((fn . args) x))
+        (mcond
+         ((meq fn 'progn) (free fn) (mevprogn args e))
+         ((meq fn 'function) (free fn)
+          (dlet* (((lambda) args)
+                  ((nlambda . lambda) (mcopy lambda))
+                  ((fvars . bvars) (freevars `(function ,nlambda) nil nil))
+                  ((e1 . e2) (split fvars e)))
+            `((funarg ,lambda ,e1) ,@e2)))
+         ((meq fn 'funcall) (free fn)
+          (dlet* ((((nfn . nargs) . ne) (mevlis args e)))
+            `(,(mapply nfn nargs) ,@ne)))
+         (t (dlet* (((nargs . ne) (mevlis args e)))
+              `(,(mapply (symbol-function fn) nargs) ,@ne))))))))
+
+(defun mapply (fn args)
+  (mif (matom fn) (apply fn args)
+    (dlet* (((ffn . rfn) fn))
+      (mcond
+       ((meq ffn 'lambda) (free ffn)
+        (dlet* (((bvlist . body) rfn)
+                ((v . ne) (mevprogn body (mpairlis bvlist args nil))))
+          (assert (null ne))
+          v))
+       ((meq ffn 'funarg) (free ffn)
+        (dlet* ((((lambda bvlist . body) ce) rfn)
+                ((v . ne) (mevprogn body (mpairlis bvlist args ce))))
+          (free lambda) (assert (null ne))
+          v))
+       (t (error "mapply: bad fn ~S" fn))))))
+
+(defun mpairlis (vars vals e)
+  (mif (mnull vars) (progn (assert (null vals)) e)
+    (dlet* (((var . vars) vars)
+            ((val . vals) vals))
+      `((,var ,@val) ,@(mpairlis vars vals e)))))
+
+(defun mevlis (args e)
+  (mif (mnull args) (progn (assert (null args)) `(nil ,@e))
+    (dlet* (((x . args) args)
+            ((xval . e) (meval x e))
+            ((argvals . e) (mevlis args e)))
+      `((,xval ,@argvals) ,@e))))
+
+(defun split (vars e)		; split env. into 2 segments.
+  (mif (mnull vars) (progn (assert (null vars)) `(nil ,@e))
+    (dlet* (((var . nvars) vars)
+            ((binding . ne) (massoc var e))
+            ((e1 . e2) (split nvars ne)))
+      `((,binding ,@e1) ,@e2))))
+
+(defun mmember (x ls)		; return truth value & rest of list.
+  (mif (mnull ls) (progn (free x) `(nil ,@ls))
+    (dlet* (((carls . ls) ls))
+      (mif (meq2 x carls) (progn (free x) `(,carls ,@ls))
+        (dlet* (((tval . rest) (mmember x ls)))
+          `(,tval . (,carls ,@rest)))))))
+
+(defun freevars (x bvars fvars)	; return new fvars and new bvars.
+  (mcond
+   ((msymbolp x)
+    (dlet* (((x1 . x2) (mcopy x))
+            ((x2 . x3) (mcopy x2))
+            ((p1val . nbvars) (mmember x1 bvars))
+            ((p2val . nfvars) (mmember x2 fvars)))
+      (mif p1val (progn (free x3) `(,nfvars ,@nbvars))
+        (mif p2val (progn (free x3) `(,nfvars ,@nbvars))
+          `((,x ,@nfvars) ,@nbvars)))))
+   ((matom x) (free x) `(,fvars ,@bvars))
+   (t (dlet* (((fn . args) x))
+        (mcond
+         ((meq fn 'function) (free fn)
+          (dlet* ((((lambda bvlist . body)) args))
+            (free lambda)
+            (freelistvars body `(,@bvlist ,@bvars) fvars)))
+         (t (freelistvars `(,fn ,@args) bvars fvars)))))))
+
+(defun freelistvars (xl bvars fvars)
+  (mif (mnull xl) (progn (assert (null xl)) `(,fvars ,@bvars))
+    (dlet* (((x . xl) xl)
+            ((nfvars . nbvars) (freelistvars xl bvars fvars)))
+      (freevars x nbvars nfvars))))
+</pre></code>
+
+<p>
+
+<a name="foot1">[Footnote 1]</a>
+
+Obscure reference to old Proctor & Gamble television advertisement for
+Crest toothpaste.</p>
+
+<p>
+
+<a name="foot2">[Footnote 2]</a>
+
+We have conjectured that sharing analysis [Baker90] utilizing ML type
+inference will elicit its exponential behavior.</p>
+
+<p>
+
+<a name="foot3">[Footnote 3]</a>
+
+One could use the Weizenbaum lazy recycling trick [Weizenbaum63] and
+put garbage onto the free list; this trick has also been advocated by
+[Wise85].  Putting garbage onto the free list moves work from the
+point of freeing to the point of allocation; this may smooth out the
+work, but does not decrease its amount, unless the program terminates
+with a dirty free list.</p>
+
+<p>
+
+<a name="foot4">[Footnote 4]</a>
+
+There are implicit "old-PC" stack operations involved with recursive
+calls, but we leave those details to the reader.</p>
+
+<p>
+
+<a name="foot5">[Footnote 5]</a>
+
+I.e., no values can be "left on base at the end of an inning", to
+provide a baseball analogy.  This error can usually be checked at
+compile-time.</p>
+
+<p>
+
+<a name="foot6">[Footnote 6]</a>
+
+Copying is still required if speculative execution of an arm is
+performed.</p>
+
+</body>
+

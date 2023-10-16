@@ -1,4 +1,10 @@
-// -*- mode: lisp -*- #DFW
+// -*- mode: lisp -*-
+// fire.sxc
+//
+// An OpenGL Fire Demo.
+//
+// TODO: make work (crashes on startup)
+//
 (#include <stdio.h>)
 (#include <string.h>)
 (#include <unistd.h>)

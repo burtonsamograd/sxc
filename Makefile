@@ -13,4 +13,6 @@ test:
 	./run-tests.sh
 
 clean:
-	rm -f sxc fire && ./rd
+	rm -f a.out sxc fire && ./rd
+	find tests -name '*.c' -exec rm {} \;
+

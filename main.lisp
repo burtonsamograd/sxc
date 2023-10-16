@@ -52,8 +52,8 @@ while
 (def (list-of symbol) expand-macro (((list-of symbol) body))
      body)
 
-(declaim (ftype (function ((or list symbol string fixnum float) simple-string stream) t) output-c-helper))
-(declaim (ftype (function (t simple-string stream) t) output-c-type-helper))
+(declaim (ftype (function ((or list symbol string fixnum float) string stream) t) output-c-helper))
+(declaim (ftype (function (t string stream) t) output-c-type-helper))
 
 (defmacro while (condition &body body)
   `(do ()
@@ -81,7 +81,7 @@ while
 				       (remove-tree-helper value (cdr tree) s)))))))
 	   (remove-tree-helper value tree (gensym))))
 
-(def list sxc-read-file ((simple-string filename))
+(def list sxc-read-file ((string filename))
   "read while file from s and return a list of forms, with each form containing a
 a combination of the form a it's line number. ie:
  ((1 |#include| |<stdio.h>|)
@@ -121,7 +121,7 @@ after reading:
 				  (char= c #\Return) (char= c #\Tab))
 			      (getc)
 			      (return-from skip-whitespace nil)))))
-	      (simple-string read-string ()
+	      (string read-string ()
 			     ;; strings are delimited by "..." with the only escaped characters being \" and \\
 			     (vars ((array result (make-array 0 :element-type 'character :adjustable t :fill-pointer 0))
 				    (character c (getc)))
@@ -224,19 +224,19 @@ after reading:
 
 ;(format t "~A~%" (sxc-read-file "test.sxc"))
 
-(def simple-string read-whole-file ((simple-string filename))
-  (vars ((simple-string contents "")
-	 (simple-string line ""))
+(def string read-whole-file ((string filename))
+  (vars ((string contents "")
+	 (string line ""))
     (with-open-file (file filename)
       (handler-case
 	  (for (line (read-line file)) t (setf line (read-line file))
-	    (setf contents (concatenate 'simple-string contents line (format nil "~A" #\Newline))))
+	    (setf contents (concatenate 'string contents line (format nil "~A" #\Newline))))
 	(end-of-file (e)
 	  (declare (ignore e))
 	  (return-from read-whole-file contents))))))
 
 (defparameter current-line 0)
-(def (or symbol list string) strip-lineno (((or list symbol string) form) (simple-string filename) (stream s))
+(def (or symbol list string) strip-lineno (((or list symbol string) form) (string filename) (stream s))
   (when (consp form)
     (vars ((fixnum curline (car form)))
       (when (not (= curline current-line))
@@ -284,7 +284,7 @@ while
 
 |#
 
-(def t c-output-while ((list form)  (simple-string filename) (stream s))
+(def t c-output-while ((list form)  (string filename) (stream s))
   (destructuring-bind (while-form condition &rest body) form
     (declare (ignore while-form))
     (format s "while ((")
@@ -297,7 +297,7 @@ while
     (format s "}")))
 
 
-(def t c-output-for ((list form)  (simple-string filename) (stream s))
+(def t c-output-for ((list form)  (string filename) (stream s))
      (ldef ((nil output-multiple-forms ((list forms) (stream s) (boolean print-final-semicolon))
 		 (vars ((fixnum nforms (1- (length forms)))
 			(fixnum curform 0))
@@ -337,7 +337,7 @@ while
 		     body)
 	     (format s "}"))))
 
-(def t c-output-function-call ((list form) (simple-string filename) (stream s))
+(def t c-output-function-call ((list form) (string filename) (stream s))
      (vars ((fixnum numargs (length (cdr form)))
 	    (fixnum curarg 0))
 	   (if (= numargs 0)
@@ -356,7 +356,7 @@ while
 			 (cdr form))))))
 		 
 
-(def t c-output-variable-decleration ((list form) (simple-string filename) (stream s))
+(def t c-output-variable-decleration ((list form) (string filename) (stream s))
 ;  (print form)
   (if (eq (second form) '|struct|)
       (progn
@@ -385,7 +385,7 @@ while
 			(format s ", " ))))
 		(cddr form)))))
 
-(def t c-output-if ((list form) (simple-string filename) (stream s))
+(def t c-output-if ((list form) (string filename) (stream s))
   (destructuring-bind (if-atom condition &rest body) form
     (declare (ignore if-atom))
     (format s "if(")
@@ -411,7 +411,7 @@ while
     (format s "}")))
     
 
-(def t c-output-infix-operator ((list form) (simple-string filename) (stream s))
+(def t c-output-infix-operator ((list form) (string filename) (stream s))
   "output c code for infix operators, with special cases for urinary - and ~"
   (when (and (or (eq (car form) '*)( eq (car form) '**)
 		 (eq (car form) '***) (eq (car form) '****))
@@ -462,9 +462,8 @@ while
 			    (format s "))"))))
 		    (cddr form))))))
 
-;; here
-(def t c-output-equals ((list form) (simple-string filename) (stream s))
-     ;; make = more lispy ie. (= x y z 0) => x = y = z = 0;
+(def t c-output-equals ((list form) (string filename) (stream s))
+     ;; TODO: make = more lispy ie. (= x y z 0) => x = y = z = 0;
      (vars* ((t lhs (second form))
 	     (list args (cddr form))
 	     (fixnum n-args (length args))
@@ -493,7 +492,7 @@ while
 			   (format s ") = ")))))
 	       args)))
 
-(def t c-output-switch ((list form) (simple-string filename) (stream s))
+(def t c-output-switch ((list form) (string filename) (stream s))
   (destructuring-bind (switch-atom expression &body body) form
     (declare (ignore switch-atom))
     (format s "switch (")
@@ -527,7 +526,7 @@ while
 	    body)
     (format s "}~%")))
 			       
-(def t c-output-comma ((list form) (simple-string filename) (stream s))
+(def t c-output-comma ((list form) (string filename) (stream s))
   (vars ((fixnum numexpr (length (rest form)))
 	 (fixnum curexpr 0))
     (mapcar (lambda (expr)
@@ -539,7 +538,7 @@ while
 		    (format s ", "))))
 	    (rest form))))
 
-(def t c-output-do-while ((list form) (simple-string filename) (stream s))
+(def t c-output-do-while ((list form) (string filename) (stream s))
   (format s "do {~%")
   (mapcar (lambda (expr)
 	    (if (and (listp expr)
@@ -553,7 +552,7 @@ while
 		  (format s ";~%"))))
 	  (cdr form)))
 		      
-(def t c-output-block-scope ((t form) (simple-string filename) (stream s))
+(def t c-output-block-scope ((t form) (string filename) (stream s))
   (format s "{~%")
   (mapcar (lambda (form)
 	    (output-c-helper form filename s)
@@ -561,14 +560,14 @@ while
 	  (rest form))
   (format s "~%}"))
 
-(def t c-output-cast ((t form) (simple-string filename) (stream s))
+(def t c-output-cast ((t form) (string filename) (stream s))
   (format s "((")
   (output-c-type-helper (second form) filename s)
   (format s ")")
   (output-c-helper (third form) filename s)
   (format s ") "))
 
-(def t c-output-array-reference ((t form) (simple-string filename) (stream s))
+(def t c-output-array-reference ((t form) (string filename) (stream s))
   (if (= (length form) 2)
       (progn
 	(output-c-helper (second form) filename s)
@@ -583,13 +582,13 @@ while
 		(cddr form))
 	(format s ")"))))
 
-(def t c-output-character ((t form) (simple-string filename) (stream s))
+(def t c-output-character ((t form) (string filename) (stream s))
      (declare (ignore filename))
      (if (eq '|space| (second form))
 	 (format s "' '" )
 	 (format s "'~A'" (second form))))
 
-(def t c-output-bracketed-initialization ((t form) (simple-string filename) (stream s))
+(def t c-output-bracketed-initialization ((t form) (string filename) (stream s))
   (format s "{ ")
   (vars ((fixnum narg (length (rest form)))
 	 (fixnum curarg 0))
@@ -607,7 +606,7 @@ while
       (pair (cddr l) (cons `(,(car l) . ,(cadr l)) a))
     (nreverse a)))
 
-(def t c-output-struct ((list form) (simple-string filename) (stream s))
+(def t c-output-struct ((list form) (string filename) (stream s))
      (destructuring-bind (struct-form name &rest fields) form
        (declare (ignore struct-form))
        (format s "struct ~A {" name)
@@ -618,7 +617,7 @@ while
 	   (format s "; ")))
        (format s "}")))
      
-(def t output-c-type-helper ((t form) (simple-string filename) (stream s))
+(def t output-c-type-helper ((t form) (string filename) (stream s))
   "called by above functions when we are expecting a type decleration.
 These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 
@@ -656,7 +655,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		 form)))
       (format s "~A " form)))
 
-(def t output-c-helper (((or list symbol string fixnum float) form) (simple-string filename) (stream s))
+(def t output-c-helper (((or list symbol string fixnum float) form) (string filename) (stream s))
   (setf form (strip-lineno form filename s))
 ;  (format t "***'~A'~%" form)
      (if (listp form)
@@ -717,8 +716,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 		    (format s "~A:" (second form)))
 		   (*?++ ; hack function for performing *ptr++
 		    (format s "(*~A++)" (second form)))
-		   (*?-- ; hack function for performing *ptr--
-		    (format s "(*~A--)" (second form)))
+
 		   ('quote ; characters are single quoted
 		    (c-output-character form filename s))
 		   (|unsigned| ; special case for unsigned int/char/short/long
@@ -743,7 +741,7 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 			    (rest form))
 		    (format s "~%"))
 		   (|macro|
-		    (print |in macro|)
+		    (print '|in-macro|)
 		    (eval `(defmacro ,(car form) ,(cadr form) 
 			     ,@(cddr form)))
 		    (setf (gethash (car form) *macros*) t))
@@ -757,23 +755,54 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 	       (otherwise
 		(error "sxc: found type other than string or symbol in code stream: '~A'" form)))))
 
-(def t output-c ((list form) (simple-string filename) &optional (stream s *standard-input*))
+(defun get-quoter (quoted-thing)
+  (let* 
+      ((s (typecase quoted-thing
+		    (string quoted-thing)
+		    (symbol (symbol-name quoted-thing))))
+       (c0 (aref s 0))
+       (c1 (aref s (1- (length s)))))
+    (case c0
+	  (#\< (values c0 c1))
+	  (t (values #\" #\")))))
+
+
+(defun strip-quotes (quoted-thing)
+  (let ((s (typecase quoted-thing
+	    (symbol (symbol-name quoted-thing))
+	    (string quoted-thing))))
+    (if (eq (char s 0) #\<)
+	(subseq s 1 (- (length s) 1))
+      s)))
+
+(def t output-c ((list form) (string filename) &optional (stream s *standard-input*))
   (case (cadr form)
-    ((|#include| |#if| |#ifdef| |#else| |#endif|)
-     (progn
-       (setf form (strip-lineno form filename s))
-       (format s "~A " (car form))
-       (mapcar (lambda (x) (format s "~A " x)) (cdr form))
-       (format s "~%")))
-    (|#define|
-     (output-c-helper form filename s))
-    ((|var| |auto| |static| |extern| |register| |struct|)
-     (output-c-helper form filename s)
-     (format s ";~%"))
-;     (format s "~A;~%" (output-c-helper form filename s)))
+	((|#include|)
+	 (multiple-value-bind (q0 q1) (get-quoter (caddr form))
+			      (let ((filename (caddr form)))
+				(if (char= q0 #\")
+				    (let ((forms (sxc-read-file filename)))
+				      (dolist (form forms)
+					(output-c form filename s)))
+				  (progn
+				    (format s "~A " (cadr form))
+				    (format s "~A~A~A~%" q0 (strip-quotes filename) q1))))))
+
+     ((|#if| |#ifdef| |#else| |#endif|)
+      (setf form (strip-lineno form filename s))
+      (format s "~A " (car form))
+      (mapcar (lambda (x) (format s "~A " x)) (cdr form))
+      (format s "~%"))
+     (|#define|
+      (output-c-helper form filename s))
+     ((|var| |auto| |static| |extern| |register| |struct|)
+      (output-c-helper form filename s)
+      (format s ";~%"))
+;;     (format s "~A;~%" (output-c-helper form filename s)))
     (otherwise
      (setf form (strip-lineno form filename s))
-     (handler-case ; try for function definition
+     (handler-case 
+	 ;; try for function definition
 	 (destructuring-bind (rettype name args &body body) form
 	   ; found function definition
 	   (setf args (strip-lineno args filename s))
@@ -833,13 +862,14 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 	 (print "--------------------------------------------------------------------------------")
 	 (print e)
 	 (print "--------------------------------------------------------------------------------"))))))
-#|	 (vars ((simple-string output (output-c-helper form filename s)))
+#|	 (vars ((string output (output-c-helper form filename s)))
 	       (when (not (string= output "__comment__"))
 		 (format s "~A;~%" output))))))))|#
 
 (def t main ()
-     (vars (((list-of simple-string) files-to-process (cdr *posix-argv*)))
+     (vars (((list-of string) files-to-process (cdr *posix-argv*)))
 	   (dolist (filename files-to-process)
+	     ;;(format *error-output* "sxc: processing file: ~S~%" filename)
 	     (vars ((list forms (sxc-read-file filename)))
 		   ;;(print forms)
 		   (handler-case 
@@ -847,9 +877,8 @@ These can be of the form 'symbol (eg. char) or a list such as (unsigned char)"
 				 (output-c form filename *standard-output*))
 			       forms)
 					;	(sxc-read-file filename)))
-		     (;;sb-int:simple-file-error (e)
-		      error (e)
-					       (declare (ignore e))
-					       (format *error-output*
-						       "~A: error: file not found.~%"
-						       filename)))))))
+		     (error (e)
+			    (format *error-output*
+				    "~A: error: file not found.~%"
+				    e)))))))
+			    

@@ -44,9 +44,7 @@ Features
 --------
 
     - transpilation from .sxc to .c sources
-    - macros
-    - source line gdb debugging of original sources (currently broken)
-
+    - source line gdb debugging of original sources
 
 Building
 --------
@@ -61,18 +59,20 @@ Running
 Use the wrapper scripts ./sxc.sh and ./sxcc.sh to compile and build an
 executable from one or more .sxc files:
 
-	   ./sxcc.sh main.sxc lib.sxc
+	   sxcc main.sxc lib.sxc
 
 The result goes into ./a.out.
+
+All options to  sxcc are passed to the compiler other than file names.
 
 Examples
 --------
 
 The following is a basic "Hello World" program:
 
-    ;;
-    ;; hello.sxc
-    ;;
+    //
+    // hello.sxc
+    //
     
     (#include <stdio.h>)
     
@@ -88,15 +88,18 @@ This can be compiled and run using the following:
 Future Design
 --
 
+Future Work - Macros
+--------------------
+
 A more complex example is adding a new control structure to the
 language, like a 'string switch', which is like a standard C switch
 but works with strings as arguments:
 
-    ;;
-    ;; sswitch - string switch
-    ;;
-    ;; a switch statement that works with strings
-    ;;
+    //
+    // sswitch - string switch
+    //
+    // a switch statement that works with strings
+    //
     (macro sswitch (val &body cases)
            (labels ((genswitch (cases)
     		  (let* ((case (car cases))
@@ -147,16 +150,27 @@ called or used, followed by it's arguments.
 
 There are a some exceptions for convenience:
 
-(*?++ ...)	- post increment
-(++?* ...)	- pre increment
+++x   	        - pre-increment on variables
+x++   	        - post-increment on variables 
 
-(*?-- ...)	- post decrement
-(--?* ...)	- pre decrement
+This is due to the fact that all symbols are passed through directly
+to the C compiler, and you will find there are no exceptions to handle
+this in the sxc code.
+
+Also, for array operations:
+
+(*?++ ...)	- post increment on pointers (*x++)
+(++?* ...)	- pre increment on pointers (*(++x))
+
+(*?-- ...)	- post decrement on pointers (*x--)
+(--?* ...)	- pre decrement on pointers (*(--x))
+
+These are handled specially by sxc in the code.
 
 Utilities
 ---------
 
-A wrapper script 'sxcc' is provided to simplify building and
+A wrapper script 'sxcc.sh' is provided to simplify building and
 compilation of program sources into an executable.
 
 TODO:
